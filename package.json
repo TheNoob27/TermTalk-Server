@@ -1,0 +1,26 @@
+{
+  "name": "termtalk-server",
+  "version": "0.0.1",
+  "description": "The server for TermTalk.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Terminalfreaks/TermTalk-Server.git"
+  },
+  "keywords": [
+    "chat",
+    "server"
+  ],
+  "author": "Terminalfreaks",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Terminalfreaks/TermTalk-Server/issues"
+  },
+  "homepage": "https://github.com/Terminalfreaks/TermTalk-Server#readme",
+  "dependencies": {
+    "socket.io": "^2.3.0"
+  }
+}
