@@ -1,10 +1,10 @@
 {
   "name": "termtalk-server",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "The server for TermTalk.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "run": "node index.js"
   },
   "repository": {
     "type": "git",
@@ -15,12 +15,15 @@
     "server"
   ],
   "author": "Terminalfreaks",
-  "license": "GPL-3.0",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/Terminalfreaks/TermTalk-Server/issues"
   },
   "homepage": "https://github.com/Terminalfreaks/TermTalk-Server#readme",
   "dependencies": {
+    "bcrypt": "^4.0.1",
+    "better-sqlite3": "^7.0.1",
+    "flakeid": "^1.0.0",
     "socket.io": "^2.3.0"
   }
 }
