@@ -25,6 +25,7 @@
 // Packages
 const http = require('http').createServer()
 const io = require('socket.io')(http)
+const fs = require("fs")
 const readline = require("readline")
 
 const Database = require('better-sqlite3')
@@ -32,6 +33,9 @@ const Database = require('better-sqlite3')
 // Our files or utils
 const Utils = require("./src/Utils.js")
 const Config = require("./config.json")
+
+// Make database directory
+if(!fs.existsSync(`${__dirname}/Databases`)) fs.mkdirSync(`${__dirname}/Databases`)
 
 // Constructors
 const UserDB = new Database('./Databases/TermTalk_Users.db')
@@ -47,11 +51,34 @@ io.on('connection', (socket) => {
 	socket.on("login", (d) => {
 		User.login(d.uid, d.password, (err, matched) => {
 			if(err) {
-				socket.emit("auth_fail")
-				console.log(err)
+				if(err.type === "userNotExists") {
+					socket.emit("auth_result", {
+						success: false,
+						method: "register",
+						...err
+					})
+				} else {
+					socket.emit("auth_result", {
+						success: false,
+						method: "register",
+						type: "serverError",
+						message: "The server encountered an error."
+					})
+					console.log(err)
+				}
 			}
-			if(!matched) return socket.emit("auth_fail")
-			socket.emit("auth_success")
+			if(!matched) return socket.emit("auth_result", {
+				success: false,
+				method: "login",
+				type: "userCredentialsWrong",
+				message: "The user's credentials are wrong."
+			})
+			socket.emit("auth_result", {
+				success: true,
+				method: "login",
+				type: "success",
+				message: "We succeeded at logging in."
+			})
 			socket.join("authed")
 		})
 	})
@@ -65,7 +92,7 @@ io.on('connection', (socket) => {
 			type: "insufficientData",
 			message: "The client did not return any data."
 		})
-		if(!["uid", "username", "tag", "password"].some((k) => !(k in data)) || [uid, username, tag, password].some(str => str === "")) return socket.emit("auth_result", {
+		if(!["uid", "username", "tag", "password"].every((k) => k in data) || [uid, username, tag, password].some(str => str === "")) return socket.emit("auth_result", {
 			success: false,
 			method: "register",
 			type: "insufficientData",
@@ -84,12 +111,17 @@ io.on('connection', (socket) => {
 						success: false,
 						method: "register",
 						type: "serverError",
-						message: "The server encountered an error"
+						message: "The server encountered an error."
 					})
 					console.log(err)
 				}
 			}
-			socket.emit("auth_success")
+			socket.emit("auth_result", {
+				success: true,
+				method: "register",
+				type: "success",
+				message: "We succeeded in registering a user."
+			})
 			socket.join("authed")
 		})
 	})
@@ -102,27 +134,21 @@ io.on('connection', (socket) => {
 		if(d.username === "Server") return;
 		io.sockets.in("authed").emit('msg', data)
 	})
-})
 
-io.on('disconnect', (data) => {
-	console.log('disconnected')
+	socket.on('disconnecting', (data) => {
+		console.log('disconnected')
+	})
 })
 
 http.listen(Config.port, () => {
 	const table = UserDB.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'users';").get()
 	if (!table["count(*)"]) {
-		db.prepare("CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, tag TEXT, uid TEXT, passwordHash TEXT);").run();
-		db.prepare("CREATE UNIQUE INDEX idx_user_id ON users (id);").run()
-		db.pragma("synchronous = 1")
-		db.pragma("journal_mode = wal")
+		UserDB.prepare("CREATE TABLE users (id INTEGER PRIMARY KEY, uid TEXT, username TEXT, tag TEXT, passwordHash TEXT);").run();
+		UserDB.prepare("CREATE UNIQUE INDEX idx_user_id ON users (id);").run()
+		UserDB.pragma("synchronous = 1")
+		UserDB.pragma("journal_mode = wal")
 		console.log("Created SQLite users database and table.")
 	}
 
 	console.log(`Server online on port ${Config.port}.`)
 })
-
-function emptyVals(object, filterArray) {
-    return [" ", ""].some(e => {
-    	Object.values(["uid", "username", "tag", "password"].reduce((obj, key) => ({ ...obj, [key]: object[key] }), {})).includes(e)
-    })
-}

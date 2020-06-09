@@ -18,7 +18,7 @@ class UserHandle {
 		this._hashPassword(password, (err, hash) => {
 			if(err) return callback(err)
 
-			this.Database.prepare("INSERT INTO users (id, username, tag, uid, passwordHash) VALUES (?, ?, ?, ?, ?);").run(flake.gen(), username, tag, uid, hash)
+			this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash) VALUES (?, ?, ?, ?, ?);").run(flake.gen(), uid, username, tag, hash)
 			return callback(null, true)
 		})
 	}
