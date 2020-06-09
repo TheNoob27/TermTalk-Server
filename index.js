@@ -49,7 +49,7 @@ const ci = readline.createInterface({
 io.on('connection', (socket) => {
 	console.log('connected')
 	socket.on("login", (d) => {
-		User.login(d.uid, d.password, (err, matched) => {
+		User.login(d.uid, d.password, (err, user, matched) => {
 			if(err) {
 				if(err.type === "userNotExists") {
 					socket.emit("auth_result", {
@@ -77,7 +77,12 @@ io.on('connection', (socket) => {
 				success: true,
 				method: "login",
 				type: "success",
-				message: "We succeeded at logging in."
+				message: "We succeeded at logging in.",
+				user:{
+					uid:user.uid,
+					username:user.username,
+					tag:user.tag
+				}
 			})
 			socket.join("authed")
 		})
@@ -120,7 +125,12 @@ io.on('connection', (socket) => {
 				success: true,
 				method: "register",
 				type: "success",
-				message: "We succeeded in registering a user."
+				message: "We succeeded in registering a user.",
+				user:{
+					uid,
+					username,
+					tag
+				}
 			})
 			socket.join("authed")
 		})
@@ -131,7 +141,8 @@ io.on('connection', (socket) => {
 	})
 
 	socket.on('msg', (data) => {
-		if(d.username === "Server") return;
+		if(data.username === "Server") return;
+		console.log(`Received message ${data.msg} from ${data.username}`)
 		io.sockets.in("authed").emit('msg', data)
 	})
 
