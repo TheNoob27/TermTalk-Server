@@ -43,7 +43,7 @@ const UserDB = new Database('./Databases/TermTalk_Users.db')
 const User = new Utils.UserHandle(UserDB)
 
 // Session IDs
-const sessionIDs = [{"Server":Utils.Session.makeSessionID()}]
+const sessionIDs = [{"sessionID":Utils.Session.makeSessionID(),"uid":"Server"}]
 const adminSessionIDs = [sessionIDs[0]]
 
 // last server message timestamp
