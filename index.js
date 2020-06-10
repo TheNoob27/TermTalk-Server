@@ -164,7 +164,7 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("msg", (data) => {
-		if(!sessionIDs.includes(data.sessionID)) return socket.emit("method_result", {
+		if(!data.sessionID || !sessionIDs.includes(data.sessionID)) return socket.emit("method_result", {
 			success: false,
 			method: "messageSend",
 			type: "invalidSessionID",
