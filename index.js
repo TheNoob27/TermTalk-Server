@@ -109,7 +109,7 @@ io.on("connection", (socket) => {
 			type: "insufficientData",
 			message: "The client did not return enough data."
 		})
-		if(tag.length !== 4) return socket.emit("auth_result", {
+		if(tag.length > 4) return socket.emit("auth_result", {
 			success: false,
 			method: "register",
 			type: "invalidTag",
