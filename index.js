@@ -43,7 +43,8 @@ const UserDB = new Database('./Databases/TermTalk_Users.db')
 const User = new Utils.UserHandle(UserDB)
 
 // Session IDs
-const sessionIDs = [Utils.Session.makeSessionID()]
+const sessionIDs = [{"sessionID":Utils.Session.makeSessionID(),"uid":"Server"}]
+const adminSessionIDs = [sessionIDs[0]]
 
 // last server message timestamp
 let lastServerMessageTime = null
@@ -81,7 +82,11 @@ io.on("connection", (socket) => {
 				message: "The user's credentials are wrong."
 			})
 			let sessionID = Utils.Session.makeSessionID()
-			sessionIDs.push(sessionID)
+			let o = {}
+			o.sessionID = sessionID
+			o.uid = user.uid
+			sessionIDs.push(o)
+			if(Config.adminUIDs.includes(user.uid)) adminSessionIDs.push(sessionID)
 			socket.emit("auth_result", {
 				success: true,
 				method: "login",
@@ -140,7 +145,10 @@ io.on("connection", (socket) => {
 				}
 			}
 			let sessionID = Utils.Session.makeSessionID()
-			sessionIDs.push(sessionID)
+			let o = {}
+			o.sessionID = sessionID
+			o.uid = uid
+			sessionIDs.push(o)
 			socket.emit("auth_result", {
 				success: true,
 				method: "register",
@@ -164,12 +172,17 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("msg", (data) => {
-		if(!data.sessionID || !sessionIDs.includes(data.sessionID)) return socket.emit("method_result", {
+		if(!data.sessionID || !sessionIDs.find(t => t.sessionID == data.sessionID)) return socket.emit("method_result", {
 			success: false,
 			method: "messageSend",
 			type: "invalidSessionID",
 			message: "The client did not provide any session ID or a valid one."
 		});
+		if(data.msg.startsWith("/ban") && adminSessionIDs.includes(data.sessionID) && sessionIDs.find(t => t.sessionID == data.sessionID && t.uid == data.uid)){
+			// handleban
+		}else if(data.msg.startsWith("/kick") && adminSessionIDs.includes(data.sessionID) && sessionIDs.find(t => t.sessionID == data.sessionID && t.uid == data.uid)){
+			// handlekick
+		}
 		if (data.uid === "Server") return;
 		delete data.sessionID
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
@@ -180,6 +193,10 @@ io.on("connection", (socket) => {
 	socket.on("disconnecting", (data) => {
 		console.log("A user disconnected.")
 		sessionIDs.splice(sessionIDs.indexOf(data.sessionID), 1)
+	})
+
+	process.on("beforeExit", () => {
+		io.sockets.in("authed").emit('disconnect')
 	})
 })
 
