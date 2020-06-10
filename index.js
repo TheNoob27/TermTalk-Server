@@ -35,7 +35,7 @@ const Utils = require("./src/Utils.js")
 const Config = require("./config.json")
 
 // Make database directory
-if(!fs.existsSync(`${__dirname}/Databases`)) fs.mkdirSync(`${__dirname}/Databases`)
+if (!fs.existsSync(`${__dirname}/Databases`)) fs.mkdirSync(`${__dirname}/Databases`)
 
 // Constructors
 const UserDB = new Database('./Databases/TermTalk_Users.db')
@@ -50,8 +50,8 @@ io.on('connection', (socket) => {
 	console.log('connected')
 	socket.on("login", (d) => {
 		User.login(d.uid, d.password, (err, user, matched) => {
-			if(err) {
-				if(err.type === "userNotExists") {
+			if (err) {
+				if (err.type === "userNotExists") {
 					socket.emit("auth_result", {
 						success: false,
 						method: "register",
@@ -67,7 +67,7 @@ io.on('connection', (socket) => {
 					console.log(err)
 				}
 			}
-			if(!matched) return socket.emit("auth_result", {
+			if (!matched) return socket.emit("auth_result", {
 				success: false,
 				method: "login",
 				type: "userCredentialsWrong",
@@ -89,23 +89,23 @@ io.on('connection', (socket) => {
 	})
 
 	socket.on("register", (data) => {
-		let {uid, username, tag, password} = data
+		let { uid, username, tag, password } = data
 		uid = uid.trim(), username = username.trim(), tag = tag.trim(), password = password.trim()
-		if(!data) return socket.emit("auth_result", {
+		if (!data) return socket.emit("auth_result", {
 			success: false,
 			method: "register",
 			type: "insufficientData",
 			message: "The client did not return any data."
 		})
-		if(!["uid", "username", "tag", "password"].every((k) => k in data) || [uid, username, tag, password].some(str => str === "")) return socket.emit("auth_result", {
+		if (!["uid", "username", "tag", "password"].every((k) => k in data) || [uid, username, tag, password].some(str => str === "")) return socket.emit("auth_result", {
 			success: false,
 			method: "register",
 			type: "insufficientData",
 			message: "The client did not return enough data."
 		})
 		User.register(uid, username, tag, password, (err) => {
-			if(err) {
-				if(err.type === "userExists") {
+			if (err) {
+				if (err.type === "userExists") {
 					socket.emit("auth_result", {
 						success: false,
 						method: "register",
@@ -127,9 +127,9 @@ io.on('connection', (socket) => {
 				type: "success",
 				message: "We succeeded in registering a user.",
 				user: {
-					uid: uid,
-					username: username,
-					tag: tag
+					uid,
+					username,
+					tag
 				}
 			})
 			socket.join("authed")
@@ -137,11 +137,11 @@ io.on('connection', (socket) => {
 	})
 
 	ci.on("line", (input) => {
-		io.sockets.in("authed").emit('msg', {username: "Server", tag: "0000", msg: input})
+		io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: input })
 	})
 
 	socket.on('msg', (data) => {
-		if(data.username === "Server") return;
+		if (data.username === "Server") return;
 		console.log(`Received message ${data.msg} from ${data.username}`)
 		io.sockets.in("authed").emit('msg', data)
 	})
