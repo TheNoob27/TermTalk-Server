@@ -78,10 +78,10 @@ io.on('connection', (socket) => {
 				method: "login",
 				type: "success",
 				message: "We succeeded at logging in.",
-				user:{
-					uid:user.uid,
-					username:user.username,
-					tag:user.tag
+				user: {
+					uid: user.uid,
+					username: user.username,
+					tag: user.tag
 				}
 			})
 			socket.join("authed")
@@ -126,10 +126,10 @@ io.on('connection', (socket) => {
 				method: "register",
 				type: "success",
 				message: "We succeeded in registering a user.",
-				user:{
-					uid,
-					username,
-					tag
+				user: {
+					uid: uid,
+					username: username,
+					tag: tag
 				}
 			})
 			socket.join("authed")
