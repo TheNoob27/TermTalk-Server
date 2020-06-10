@@ -150,7 +150,12 @@ io.on('connection', (socket) => {
 	})
 
 	socket.on('msg', (data) => {
-		if(!sessionIDs.includes(data.sessionID)) return;
+		if(!sessionIDs.includes(data.sessionID)) return socket.emit("method_result", {
+			success: false,
+			method: "messageSend",
+			type: "invalidSessionID",
+			message: "The client did not provide any session ID or a valid one."
+		});
 		if (data.username === "Server") return;
 		console.log(`Received message ${data.msg} from ${data.username}`)
 		io.sockets.in("authed").emit('msg', data)
