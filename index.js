@@ -41,6 +41,9 @@ if (!fs.existsSync(`${__dirname}/Databases`)) fs.mkdirSync(`${__dirname}/Databas
 const UserDB = new Database('./Databases/TermTalk_Users.db')
 const User = new Utils.UserHandle(UserDB)
 
+// Session ids
+const sessionIDs = [Utils.Session.makeSessionID()]
+
 const ci = readline.createInterface({
 	input: process.stdin,
 	output: process.stdout
@@ -73,6 +76,8 @@ io.on('connection', (socket) => {
 				type: "userCredentialsWrong",
 				message: "The user's credentials are wrong."
 			})
+			let sessionID = Utils.Session.makeSessionID()
+			sessionIDs.push(sessionID)
 			socket.emit("auth_result", {
 				success: true,
 				method: "login",
@@ -81,7 +86,8 @@ io.on('connection', (socket) => {
 				user: {
 					uid: user.uid,
 					username: user.username,
-					tag: user.tag
+					tag: user.tag,
+					sessionID
 				}
 			})
 			socket.join("authed")
@@ -121,6 +127,8 @@ io.on('connection', (socket) => {
 					console.log(err)
 				}
 			}
+			let sessionID = Utils.Session.makeSessionID()
+			sessionIDs.push(sessionID)
 			socket.emit("auth_result", {
 				success: true,
 				method: "register",
@@ -129,7 +137,8 @@ io.on('connection', (socket) => {
 				user: {
 					uid,
 					username,
-					tag
+					tag,
+					sessionID
 				}
 			})
 			socket.join("authed")
@@ -137,10 +146,16 @@ io.on('connection', (socket) => {
 	})
 
 	ci.on("line", (input) => {
-		io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: input })
+		io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: input, sessionID: sessionIDs[0] })
 	})
 
 	socket.on('msg', (data) => {
+		if(!sessionIDs.includes(data.sessionID)) return socket.emit("method_result", {
+			success: false,
+			method: "messageSend",
+			type: "invalidSessionID",
+			message: "The client did not provide any session ID or a valid one."
+		});
 		if (data.username === "Server") return;
 		console.log(`Received message ${data.msg} from ${data.username}`)
 		io.sockets.in("authed").emit('msg', data)
@@ -148,6 +163,7 @@ io.on('connection', (socket) => {
 
 	socket.on('disconnecting', (data) => {
 		console.log('disconnected')
+		sessionIDs.splice(sessionIDs.indexOf(data.sessionID), 1)
 	})
 })
 
