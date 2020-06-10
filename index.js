@@ -172,6 +172,7 @@ io.on("connection", (socket) => {
 		});
 		if (data.uid === "Server") return;
 		delete data.sessionID
+		data.msg = Utils.Session.sanitizeInputTags(data.msg)
 		console.log(`${data.username}#${data.tag} ${data.msg}`)
 		io.sockets.in("authed").emit('msg', data)
 	})
