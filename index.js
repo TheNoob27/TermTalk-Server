@@ -181,6 +181,10 @@ io.on("connection", (socket) => {
 		console.log("A user disconnected.")
 		sessionIDs.splice(sessionIDs.indexOf(data.sessionID), 1)
 	})
+
+	process.on("beforeExit", () => {
+		io.sockets.in("authed").emit('disconnect')
+	})
 })
 
 http.listen(Config.port, () => {
