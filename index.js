@@ -41,7 +41,7 @@ if (!fs.existsSync(`${__dirname}/Databases`)) fs.mkdirSync(`${__dirname}/Databas
 const UserDB = new Database('./Databases/TermTalk_Users.db')
 const User = new Utils.UserHandle(UserDB)
 
-// Session ids
+// Session IDs
 const sessionIDs = [Utils.Session.makeSessionID()]
 
 const ci = readline.createInterface({
@@ -49,23 +49,23 @@ const ci = readline.createInterface({
 	output: process.stdout
 })
 
-io.on('connection', (socket) => {
-	console.log('connected')
+io.on("connection", (socket) => {
+	console.log("A user connected.")
 	socket.on("login", (d) => {
 		User.login(d.uid, d.password, (err, user, matched) => {
 			if (err) {
 				if (err.type === "userNotExists") {
 					socket.emit("auth_result", {
 						success: false,
-						method: "register",
+						method: "login",
 						...err
 					})
 				} else {
 					socket.emit("auth_result", {
 						success: false,
-						method: "register",
+						method: "login",
 						type: "serverError",
-						message: "The server encountered an error."
+						message: "The server encountered an error. Be sure to contact the admin."
 					})
 					console.log(err)
 				}
@@ -82,7 +82,7 @@ io.on('connection', (socket) => {
 				success: true,
 				method: "login",
 				type: "success",
-				message: "We succeeded at logging in.",
+				message: "Logged in successfully.",
 				user: {
 					uid: user.uid,
 					username: user.username,
@@ -122,7 +122,7 @@ io.on('connection', (socket) => {
 						success: false,
 						method: "register",
 						type: "serverError",
-						message: "The server encountered an error."
+						message: "The server encountered an error. Be sure to contact the admin."
 					})
 					console.log(err)
 				}
@@ -133,7 +133,7 @@ io.on('connection', (socket) => {
 				success: true,
 				method: "register",
 				type: "success",
-				message: "We succeeded in registering a user.",
+				message: "Registered successfully.",
 				user: {
 					uid,
 					username,
@@ -149,7 +149,7 @@ io.on('connection', (socket) => {
 		io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: input, sessionID: sessionIDs[0] })
 	})
 
-	socket.on('msg', (data) => {
+	socket.on("msg", (data) => {
 		if(!sessionIDs.includes(data.sessionID)) return socket.emit("method_result", {
 			success: false,
 			method: "messageSend",
@@ -161,8 +161,8 @@ io.on('connection', (socket) => {
 		io.sockets.in("authed").emit('msg', data)
 	})
 
-	socket.on('disconnecting', (data) => {
-		console.log('disconnected')
+	socket.on("disconnecting", (data) => {
+		console.log("A user disconnected.")
 		sessionIDs.splice(sessionIDs.indexOf(data.sessionID), 1)
 	})
 })
