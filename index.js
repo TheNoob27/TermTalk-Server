@@ -46,7 +46,7 @@ const User = new Utils.UserHandle(UserDB)
 const sessionIDs = [{"sessionID":Utils.Session.makeSessionID(),"uid":"Server"}]
 const adminSessionIDs = [sessionIDs[0]]
 
-// last server message timestamp
+// Last server message timestamp
 let lastServerMessageTime = null
 
 const ci = readline.createInterface({
@@ -106,24 +106,20 @@ io.on("connection", (socket) => {
 	socket.on("register", (data) => {
 		let { uid, username, tag, password } = data
 		uid = uid.trim(), username = username.trim(), tag = tag.trim(), password = password.trim()
-		if (!data) return socket.emit("auth_result", {
+		
+		if (!data || !["uid", "username", "tag", "password"].every((k) => k in data) || [uid, username, tag, password].some(str => str === "")) return socket.emit("auth_result", {
 			success: false,
 			method: "register",
 			type: "insufficientData",
-			message: "The client did not return any data."
-		})
-		if (!["uid", "username", "tag", "password"].every((k) => k in data) || [uid, username, tag, password].some(str => str === "")) return socket.emit("auth_result", {
-			success: false,
-			method: "register",
-			type: "insufficientData",
-			message: "The client did not return enough data."
+			message: "The client did not return any or enough data."
 		})
 		if(tag.length > 4) return socket.emit("auth_result", {
 			success: false,
 			method: "register",
 			type: "invalidTag",
-			message: "The client provided an invalid tag."
+			message: "The client provided an invalid tag, or one above 4 characters."
 		})
+
 		User.register(uid, username, tag, password, (err) => {
 			if (err) {
 				if (err.type === "userExists") {
@@ -132,7 +128,7 @@ io.on("connection", (socket) => {
 						method: "register",
 						...err
 					})
-					return
+					return;
 				} else {
 					socket.emit("auth_result", {
 						success: false,
@@ -141,14 +137,13 @@ io.on("connection", (socket) => {
 						message: "The server encountered an error. Be sure to contact the admin."
 					})
 					console.log(err)
-					return
+					return;
 				}
 			}
+
 			let sessionID = Utils.Session.makeSessionID()
-			let o = {}
-			o.sessionID = sessionID
-			o.uid = uid
-			sessionIDs.push(o)
+			sessionIDs.push({uid, sessionID})
+
 			socket.emit("auth_result", {
 				success: true,
 				method: "register",
@@ -179,9 +174,9 @@ io.on("connection", (socket) => {
 			message: "The client did not provide any session ID or a valid one."
 		});
 		if(data.msg.startsWith("/ban") && adminSessionIDs.includes(data.sessionID) && sessionIDs.find(t => t.sessionID == data.sessionID && t.uid == data.uid)){
-			// handleban
-		}else if(data.msg.startsWith("/kick") && adminSessionIDs.includes(data.sessionID) && sessionIDs.find(t => t.sessionID == data.sessionID && t.uid == data.uid)){
-			// handlekick
+			// TODO: Handle ban
+		} else if(data.msg.startsWith("/kick") && adminSessionIDs.includes(data.sessionID) && sessionIDs.find(t => t.sessionID == data.sessionID && t.uid == data.uid)) {
+			// TODO: Handle kick
 		}
 		if (data.uid === "Server") return;
 		delete data.sessionID
