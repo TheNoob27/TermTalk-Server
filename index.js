@@ -109,6 +109,12 @@ io.on("connection", (socket) => {
 			type: "insufficientData",
 			message: "The client did not return enough data."
 		})
+		if(tag.length > 4) return socket.emit("auth_result", {
+			success: false,
+			method: "register",
+			type: "invalidTag",
+			message: "The client provided an invalid tag."
+		})
 		User.register(uid, username, tag, password, (err) => {
 			if (err) {
 				if (err.type === "userExists") {
@@ -117,6 +123,7 @@ io.on("connection", (socket) => {
 						method: "register",
 						...err
 					})
+					return
 				} else {
 					socket.emit("auth_result", {
 						success: false,
@@ -125,6 +132,7 @@ io.on("connection", (socket) => {
 						message: "The server encountered an error. Be sure to contact the admin."
 					})
 					console.log(err)
+					return
 				}
 			}
 			let sessionID = Utils.Session.makeSessionID()
