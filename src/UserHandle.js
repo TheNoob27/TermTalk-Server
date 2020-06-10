@@ -34,6 +34,10 @@ class UserHandle {
 	}
 
 	register(uid, username, tag, password, callback) {
+		if(uid === "Server") return callback({
+			type: "invalidUID",
+			message: "The UID provided is not allowed to be used."
+		})
 		const user = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
 		if(user) return callback({
 			type: "userExists",

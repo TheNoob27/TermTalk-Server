@@ -160,17 +160,19 @@ io.on("connection", (socket) => {
 	ci.on("line", (input) => {
 		if(lastServerMessageTime == Date.now()) return
 		lastServerMessageTime = Date.now()
-		io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: input, sessionID: sessionIDs[0] })
+		io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: input, uid: "Server" })
 	})
 
 	socket.on("msg", (data) => {
-		if(!sessionIDs.includes(data.sessionID)) return socket.emit("method_result", {
+		if(!data.sessionID || !sessionIDs.includes(data.sessionID)) return socket.emit("method_result", {
 			success: false,
 			method: "messageSend",
 			type: "invalidSessionID",
 			message: "The client did not provide any session ID or a valid one."
 		});
-		if (data.sessionID === sessionIDs[0]) return;
+		if (data.uid === "Server") return;
+		delete data.sessionID
+		data.msg = Utils.Session.sanitizeInputTags(data.msg)
 		console.log(`${data.username}#${data.tag} ${data.msg}`)
 		io.sockets.in("authed").emit('msg', data)
 	})

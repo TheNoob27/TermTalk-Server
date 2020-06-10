@@ -28,7 +28,11 @@ class Session {
 
 	static makeSessionID() {
 		return crypto.randomBytes(10).toString("hex")
-	}
+  }
+  
+  static sanitizeInputTags(text){
+    return text.replace(/\{/g, "{ ").replace(/\}/, "} ")
+  }
 }
 
 module.exports = Session;
