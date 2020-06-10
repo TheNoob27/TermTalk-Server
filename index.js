@@ -1,3 +1,4 @@
+#! /usr/bin/env node
 /*
 	MIT License
 
@@ -165,7 +166,7 @@ io.on("connection", (socket) => {
 			message: "The client did not provide any session ID or a valid one."
 		});
 		if (data.username === "Server") return;
-		console.log(`Received message ${data.msg} from ${data.username}`)
+		console.log(`${data.username}#${data.tag} ${data.msg}`)
 		io.sockets.in("authed").emit('msg', data)
 	})
 
