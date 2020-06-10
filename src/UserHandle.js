@@ -30,7 +30,7 @@ class UserHandle {
 			message: "This user does not exist."
 		})
 		bcrypt.compare(password, user.passwordHash, function(err, matched) {   
-			return err == null ? callback(null, matched) : callback(err);
+			return err == null ? callback(null, user, matched) : callback(err);
 		})
 	}
 
