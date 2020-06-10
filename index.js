@@ -81,6 +81,7 @@ io.on("connection", (socket) => {
 				type: "userCredentialsWrong",
 				message: "The user's credentials are wrong."
 			})
+			let sessionID = Utils.Session.makeSessionID()
 			let o = {}
 			o.sessionID = sessionID
 			o.uid = user.uid
