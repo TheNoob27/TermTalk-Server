@@ -150,7 +150,7 @@ io.on('connection', (socket) => {
 	})
 
 	socket.on('msg', (data) => {
-		if(!sessionIDs.includes(data.sessionID)) return
+		if(!sessionIDs.includes(data.sessionID)) return;
 		if (data.username === "Server") return;
 		console.log(`Received message ${data.msg} from ${data.username}`)
 		io.sockets.in("authed").emit('msg', data)
