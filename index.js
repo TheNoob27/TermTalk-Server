@@ -45,6 +45,9 @@ const User = new Utils.UserHandle(UserDB)
 // Session IDs
 const sessionIDs = [Utils.Session.makeSessionID()]
 
+// last server message timestamp
+let lastServerMessageTime = null
+
 const ci = readline.createInterface({
 	input: process.stdin,
 	output: process.stdout
@@ -155,6 +158,8 @@ io.on("connection", (socket) => {
 	})
 
 	ci.on("line", (input) => {
+		if(lastServerMessageTime == Date.now()) return
+		lastServerMessageTime = Date.now()
 		io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: input, sessionID: sessionIDs[0] })
 	})
 
@@ -165,7 +170,7 @@ io.on("connection", (socket) => {
 			type: "invalidSessionID",
 			message: "The client did not provide any session ID or a valid one."
 		});
-		if (data.username === "Server") return;
+		if (data.sessionID === sessionIDs[0]) return;
 		console.log(`${data.username}#${data.tag} ${data.msg}`)
 		io.sockets.in("authed").emit('msg', data)
 	})
