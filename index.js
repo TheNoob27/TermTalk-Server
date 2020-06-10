@@ -178,9 +178,9 @@ io.on("connection", (socket) => {
 			type: "invalidSessionID",
 			message: "The client did not provide any session ID or a valid one."
 		});
-		if(data.msg.startsWith("/ban") && adminSessionIDs.includes(data.sessionID)){
+		if(data.msg.startsWith("/ban") && adminSessionIDs.includes(data.sessionID) && sessionIDs.find(t => t.sessionID == data.sessionID && t.uid == data.uid)){
 			// handleban
-		}else if(data.msg.startsWith("/kick") && adminSessionIDs.includes(data.sessionID)){
+		}else if(data.msg.startsWith("/kick") && adminSessionIDs.includes(data.sessionID) && sessionIDs.find(t => t.sessionID == data.sessionID && t.uid == data.uid)){
 			// handlekick
 		}
 		if (data.uid === "Server") return;
