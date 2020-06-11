@@ -43,8 +43,7 @@ const UserDB = new Database('./Databases/TermTalk_Users.db')
 const User = new Utils.UserHandle(UserDB)
 
 // Session IDs
-const sessionIDs = [{"sessionID":Utils.Session.makeSessionID(),"uid":"Server"}]
-const adminSessionIDs = [sessionIDs[0]]
+const sessionIDs = [{ "sessionID": Utils.Session.makeSessionID(), "uid": "Server", admin: true }]
 
 // Last server message timestamp
 let lastServerMessageTime = null
@@ -82,11 +81,8 @@ io.on("connection", (socket) => {
 				message: "The user's credentials are wrong."
 			})
 			let sessionID = Utils.Session.makeSessionID()
-			let o = {}
-			o.sessionID = sessionID
-			o.uid = user.uid
-			sessionIDs.push(o)
-			if(Config.adminUIDs.includes(user.uid)) adminSessionIDs.push(sessionID)
+			sessionIDs.push({ uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id })
+
 			socket.emit("auth_result", {
 				success: true,
 				method: "login",
@@ -106,14 +102,14 @@ io.on("connection", (socket) => {
 	socket.on("register", (data) => {
 		let { uid, username, tag, password } = data
 		uid = uid.trim(), username = username.trim(), tag = tag.trim(), password = password.trim()
-		
+
 		if (!data || !["uid", "username", "tag", "password"].every((k) => k in data) || [uid, username, tag, password].some(str => str === "")) return socket.emit("auth_result", {
 			success: false,
 			method: "register",
 			type: "insufficientData",
 			message: "The client did not return any or enough data."
 		})
-		if(tag.length > 4) return socket.emit("auth_result", {
+		if (tag.length > 4) return socket.emit("auth_result", {
 			success: false,
 			method: "register",
 			type: "invalidTag",
@@ -142,7 +138,7 @@ io.on("connection", (socket) => {
 			}
 
 			let sessionID = Utils.Session.makeSessionID()
-			sessionIDs.push({uid, sessionID})
+			sessionIDs.push({ uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id })
 
 			socket.emit("auth_result", {
 				success: true,
@@ -161,22 +157,43 @@ io.on("connection", (socket) => {
 	})
 
 	ci.on("line", (input) => {
-		if(lastServerMessageTime == Date.now()) return
+		if (lastServerMessageTime == Date.now()) return
 		lastServerMessageTime = Date.now()
 		io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: input, uid: "Server" })
 	})
 
 	socket.on("msg", (data) => {
-		if(!data.sessionID || !sessionIDs.find(t => t.sessionID == data.sessionID)) return socket.emit("method_result", {
+		if (!data.sessionID || !sessionIDs.find(t => t.sessionID == data.sessionID)) return socket.emit("method_result", {
 			success: false,
 			method: "messageSend",
 			type: "invalidSessionID",
 			message: "The client did not provide any session ID or a valid one."
 		});
-		if(data.msg.startsWith("/ban") && adminSessionIDs.includes(data.sessionID) && sessionIDs.find(t => t.sessionID == data.sessionID && t.uid == data.uid)){
+		let session = sessionIDs.find(t => t.sessionID == data.sessionID && t.uid == data.uid)
+		if (data.msg.trim().startsWith("/ban") && session.admin) {
 			// TODO: Handle ban
-		} else if(data.msg.startsWith("/kick") && adminSessionIDs.includes(data.sessionID) && sessionIDs.find(t => t.sessionID == data.sessionID && t.uid == data.uid)) {
-			// TODO: Handle kick
+		} else if (data.msg.trim().startsWith("/kick") && session.admin) {
+			let uid = data.msg.trim().split(" ").slice(1).join(" ")
+			if(uid == session.uid){
+				if(data.uid !== "Server") return io.sockets.connected[session.socketID].emit('msg', { username: "Server", tag: "0000", msg: "{#ff0000-fg}You cannot kick yourself.{/#ff0000-fg}", uid: "Server" })
+				else return console.log("You cannot kick yourself.")
+			} 
+			if (!uid){ 
+				if(data.uid !== "Server") return io.sockets.connected[session.socketID].emit('msg', { username: "Server", tag: "0000", msg: "{#ff0000-fg}No UID given.{/#ff0000-fg}", uid: "Server" })
+				else return console.log("No UID given.")
+			}
+			let sessionToKick = sessionIDs.find(t => t.uid == uid)
+			if(!sessionToKick){
+				if(data.uid !== "Server") return io.sockets.connected[session.socketID].emit('msg', { username: "Server", tag: "0000", msg: "{#ff0000-fg}Invalid UID.{/#ff0000-fg}", uid: "Server" })
+				else return console.log("Invalid UID.")
+			}
+			if(Utils.Session.kick(sessionToKick.socketID, io.sockets)){
+				if(data.uid !== "Server") return io.sockets.connected[session.socketID].emit('msg', { username: "Server", tag: "0000", msg: "{#00ff00-fg}Successfully kicked user with UID: " + uid + ".{/#00ff00-fg}", uid: "Server" })
+				else return console.log("Successfully kicked user with UID: " + uid + ".")
+			}else{
+				if(data.uid !== "Server") return io.sockets.connected[session.socketID].emit('msg', { username: "Server", tag: "0000", msg: "{#ff0000-fg}Unable to kick user with UID: " + uid + ". Socket not found.{/#ff0000-fg}", uid: "Server" })
+				else return console.log("Unable to kick user with UID: " + uid + ". Socket not found.")
+			}
 		}
 		if (data.uid === "Server") return;
 		delete data.sessionID

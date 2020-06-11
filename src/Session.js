@@ -32,7 +32,18 @@ class Session {
   
   static sanitizeInputTags(text){
     return text.replace(/\{/g, "{ ").replace(/\}/, "} ")
-  }
+	}
+	
+	static kick(id, sockets){
+		let socket = sockets.connected[id]
+		if(socket){
+			socket.emit('kickEvent',{ username: "Server", tag: "0000", msg: "{#ff0000-fg}You've been kicked.{/#ff0000-fg}", uid: "Server" })
+			socket.conn.close()
+			return true
+		}else{
+			return false
+		}
+	}
 }
 
 module.exports = Session;

@@ -1,4 +1,4 @@
 {
 	"port": "3000",
-	"adminUIDs": []
+	"adminUIDs": ["Steven"]
 }
