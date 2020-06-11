@@ -55,6 +55,13 @@ const ci = readline.createInterface({
 
 io.on("connection", (socket) => {
 	console.log("A user connected.")
+	socket.emit("get_user_data")	
+	socket.on("return_user_data", (data) => {	
+		if (data) {	
+			socket.join("authed")	
+			if(!sessionIDs.find(t => t.sessionID == data.sessionID)) sessionIDs.push({ uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })	
+		}	
+	})
 	socket.on("login", (d) => {
 		User.login(d.uid, d.password, (err, user, matched) => {
 			if (err) {
