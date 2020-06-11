@@ -234,6 +234,10 @@ io.on("connection", (socket) => {
 	})
 })
 
+ci.on("SIGINT", () => {
+	process.exit(0)
+})
+
 http.listen(Config.port, () => {
 	const table = UserDB.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'users';").get()
 	if (!table["count(*)"]) {
