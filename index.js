@@ -185,14 +185,14 @@ io.on("connection", (socket) => {
 			}
 			let sessionToKick = sessionIDs.find(t => t.uid == uid)
 			if(!sessionToKick) {
-				if(data.uid !== "Server") return Utils.Server.send("Invalid account name given.")
+				if(data.uid !== "Server") return Utils.Server.send("Invalid account name given.", io, session.socketID)
 				returnnconsole.log("Invalid UID.")
 			}
 			if(Utils.Session.kick(sessionToKick.socketID, io.sockets)) {
-				if(data.uid !== "Server") return Utils.Server.send(`Successfully kicked user with the account name "${uid}."`)
+				if(data.uid !== "Server") return Utils.Server.send(`Successfully kicked user with the account name "${uid}."`, io, session.socketID)
 				return console.log(`Successfully kicked user with the account name "${uid}."`)
 			} else {
-				if(data.uid !== "Server") return Utils.Server.send(`Unable to kick user with the account name "${uid}." They may not be connected.`)
+				if(data.uid !== "Server") return Utils.Server.send(`Unable to kick user with the account name "${uid}." They may not be connected.`, io, session.socketID)
 				return console.log(`Unable to kick user with the account name "${uid}." They may not be connected.`)
 			}
 		}
