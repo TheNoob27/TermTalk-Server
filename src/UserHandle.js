@@ -62,6 +62,15 @@ class UserHandle {
 		})
 	}
 
+	getUser(uid, callback) {
+		const user = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
+		if(!user) return callback({
+			type: "userNotExists",
+			message: "This user does not exist."
+		})
+		return callback(null, user)
+	}
+
 	_hashPassword(password, callback) {
 		bcrypt.genSalt(10, function(err, salt) {
 			if (err) return callback(err);

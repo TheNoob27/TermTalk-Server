@@ -1,4 +1,5 @@
 module.exports = {
 	UserHandle: require("./UserHandle"),
-	Session: require("./Session")
+	Session: require("./Session"),
+	Server: require("./Server")
 }
