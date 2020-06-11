@@ -59,6 +59,7 @@ io.on("connection", (socket) => {
 	socket.on("return_user_data", (data) => {	
 		if (data) {	
 			socket.join("authed")	
+			io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: `User ${data.uid} has reconnected.`, uid: "Server" })
 			if(!sessionIDs.find(t => t.sessionID == data.sessionID)) sessionIDs.push({ uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })	
 		}	
 	})
@@ -89,7 +90,7 @@ io.on("connection", (socket) => {
 			})
 			let sessionID = Utils.Session.makeSessionID()
 			sessionIDs.push({ uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id })
-
+			io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: `User ${user.uid} has connected.`, uid: "Server" })
 			socket.emit("auth_result", {
 				success: true,
 				method: "login",
@@ -146,6 +147,7 @@ io.on("connection", (socket) => {
 
 			let sessionID = Utils.Session.makeSessionID()
 			sessionIDs.push({ uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id })
+			io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: `User ${uid} has connected.`, uid: "Server" })
 
 			socket.emit("auth_result", {
 				success: true,
@@ -213,7 +215,10 @@ io.on("connection", (socket) => {
 
 	socket.on("disconnecting", (data) => {
 		console.log("A user disconnected.")
-		sessionIDs.splice(sessionIDs.indexOf(data.sessionID), 1)
+		let session = sessionIDs.splice(sessionIDs.indexOf(data.sessionID), 1)[0]
+		if(session){
+			io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: `User ${session.uid} has disconnected.`, uid: "Server" })
+		}
 	})
 
 	process.on("beforeExit", () => {
