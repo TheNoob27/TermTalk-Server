@@ -36,11 +36,11 @@ class Session {
 	
 	static kick(id, sockets){
 		let socket = sockets.connected[id]
-		if(socket){
+		if(socket) {
 			socket.emit('kickEvent',{ username: "Server", tag: "0000", msg: "{#ff0000-fg}You've been kicked.{/#ff0000-fg}", uid: "Server" })
 			socket.conn.close()
 			return true
-		}else{
+		} else {
 			return false
 		}
 	}
