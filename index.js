@@ -59,7 +59,7 @@ io.on("connection", (socket) => {
 	socket.on("return_user_data", (data) => {	
 		if (data) {	
 			socket.join("authed")	
-			io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: `User ${data.uid} has reconnected.`, uid: "Server" })
+			Utils.Server.broadcast(`${data.username}#${data.tag} has reconnected.`, io)
 			if(!sessionIDs.find(t => t.sessionID == data.sessionID)) sessionIDs.push({ uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })	
 		}	
 	})
@@ -88,9 +88,10 @@ io.on("connection", (socket) => {
 				type: "userCredentialsWrong",
 				message: "The user's credentials are wrong."
 			})
+
 			let sessionID = Utils.Session.makeSessionID()
 			sessionIDs.push({ uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id })
-			io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: `User ${user.uid} has connected.`, uid: "Server" })
+
 			socket.emit("auth_result", {
 				success: true,
 				method: "login",
@@ -103,7 +104,9 @@ io.on("connection", (socket) => {
 					sessionID
 				}
 			})
+
 			socket.join("authed")
+			Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io)
 		})
 	})
 
@@ -147,7 +150,6 @@ io.on("connection", (socket) => {
 
 			let sessionID = Utils.Session.makeSessionID()
 			sessionIDs.push({ uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id })
-			io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: `User ${uid} has connected.`, uid: "Server" })
 
 			socket.emit("auth_result", {
 				success: true,
@@ -162,6 +164,7 @@ io.on("connection", (socket) => {
 				}
 			})
 			socket.join("authed")
+			Utils.Server.broadcast(`${username}#${tag} has connected.`, io)
 		})
 	})
 
@@ -178,7 +181,7 @@ io.on("connection", (socket) => {
 			type: "invalidSessionID",
 			message: "The client did not provide any session ID or a valid one."
 		})
-		
+
 		let session = sessionIDs.find(t => t.sessionID == data.sessionID && t.uid == data.uid)
 		if (data.msg.trim().startsWith("/ban") && session.admin) {
 			// TODO: Handle ban
@@ -205,20 +208,25 @@ io.on("connection", (socket) => {
 				return console.log(`Unable to kick user with the account name "${uid}." They may not be connected.`)
 			}
 		}
-		
+
 		if (data.uid === "Server") return;
+
 		delete data.sessionID
+		delete data.server
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
 		console.log(`${data.username}#${data.tag} > ${data.msg}`)
 		io.sockets.in("authed").emit('msg', data)
 	})
 
 	socket.on("disconnecting", (data) => {
-		console.log("A user disconnected.")
 		let session = sessionIDs.splice(sessionIDs.indexOf(data.sessionID), 1)[0]
-		if(session){
-			io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: `User ${session.uid} has disconnected.`, uid: "Server" })
-		}
+		User.getUser(session.uid, (err, d) => {
+			if(err) return;
+			console.log(`${d.username}#${d.tag} has disconnected.`)
+			if(session) {
+				Utils.Server.broadcast(`${d.username}#${d.tag} has disconnected.`, io)
+			}
+		})
 	})
 
 	process.on("beforeExit", () => {

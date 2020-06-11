@@ -1,6 +1,34 @@
+/*
+	MIT License
+
+	Copyright (c) 2020 Terminalfreaks
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
 class Server {
 	static send(msg, io, socketID) {
-		return io.sockets.connected[socketID].emit('msg', { username: "Server", tag: "0000", msg, uid: "Server" })
+		return io.sockets.connected[socketID].emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
+	}
+
+	static broadcast(msg, io) {
+		return io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
 	}
 }
 
