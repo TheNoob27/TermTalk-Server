@@ -7,8 +7,8 @@ cache.addons = {
         started: Date.now()
     },
     connectors: {
-        loadCmd: require("./src/functions/loadCommands.js"),
-        msConvert: require("./src/functions/secondsConvert.js")
+        loadCmd: require("./functions/loadCommands.js"),
+        msConvert: require("./functions/secondsConvert.js")
     }
 }
 
