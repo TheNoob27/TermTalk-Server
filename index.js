@@ -226,6 +226,18 @@ io.on("connect", (socket) => {
 		if (data.uid === "Server") return;
 
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
+		if(data.msg.trim().length > Config.maxCharacterLength) return socket.emit("methodResult", {
+			success: false,
+			method: "messageSend",
+			type: "messageTooBig",
+			message: `The message the client attempted to send was above ${Config.maxCharacterLength} characters.`
+		})
+		if(data.msg.trim().length == 0) return socket.emit("methodResult", {
+			success: false,
+			method: "messageSend",
+			type: "noMessageContent",
+			message: `The message the client attempted to send had no body.`
+		})
 		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
