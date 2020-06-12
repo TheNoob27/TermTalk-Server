@@ -28,18 +28,18 @@ const http = require('http').createServer()
 const io = require('socket.io')(http)
 const fs = require("fs")
 const readline = require("readline")
-
 const Database = require('better-sqlite3')
 
 // Our files or utils
 const Utils = require("./src/Utils.js")
 const Config = require("./config.json")
-
 // Make database directory
 if (!fs.existsSync(`${__dirname}/Databases`)) fs.mkdirSync(`${__dirname}/Databases`)
 
 // Constructors
 const UserDB = new Database('./Databases/TermTalk_Users.db')
+const serverCache = require("./serverCache.js")
+const cache = require('./serverCache.js')
 const User = new Utils.UserHandle(UserDB)
 
 // Sessions
@@ -47,6 +47,8 @@ const sessions = [{ "sessionID": Utils.Session.makeSessionID(), "uid": "Server",
 
 // Last server message timestamp
 let lastServerMessageTime = null
+// Load in hardcoded commands
+cache.addons.connectors.loadCmd()
 
 const ci = readline.createInterface({
 	input: process.stdin,
@@ -189,6 +191,12 @@ io.on("connection", (socket) => {
 			message: "The client did not provide any session ID or a valid one."
 		})
 		let session = sessions.find(t => t.sessionID == data.sessionID && t.uid == data.uid)
+		if(cache.addons.hardCommands.has(`${data.msg.trim().replace("/","")}`)) {
+			let cmd = data.msg.trim().replace("/","")
+			if (cache.addons.hardCommands.has(cmd)) return cache.addons.hardCommands.get(cmd).then(cmd => {
+				cmd.run({Utils: Utils, io: io, session: session}, data.msg, data.msg.slice(1).trim().split(/ +/g))
+			})
+		}
 		if (data.msg.trim().startsWith("/ban") && session.admin) {
 			// TODO: Handle ban
 		} else if (data.msg.trim().startsWith("/kick") && session.admin) {
@@ -257,3 +265,4 @@ http.listen(Config.port, () => {
 
 	console.log(`Server online on port ${Config.port}.`)
 })
+
