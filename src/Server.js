@@ -31,7 +31,7 @@ class Server {
 		return io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
 	}
 
-	static getMemberList(sessions, UserHandle){
+	static getMemberList(sessions, UserHandle) {
 		return sessions.map(t => UserHandle.getUserByUID(t.uid, (err, user) => {
 			if(err) return ""
 			return `${user.username}#${user.tag}`
