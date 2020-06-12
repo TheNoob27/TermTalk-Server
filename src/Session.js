@@ -30,14 +30,14 @@ class Session {
 		return crypto.randomBytes(10).toString("hex")
   }
   
-  static sanitizeInputTags(text){
+  static sanitizeInputTags(text) {
     return text.replace(/\{/g, "{ ").replace(/\}/, "} ")
 	}
 	
-	static kick(id, sockets){
+	static kick(id, sockets) {
 		let socket = sockets.connected[id]
 		if(socket) {
-			socket.emit('msg',{ username: "Server", tag: "0000", msg: "{#ff0000-fg}You've been kicked.{/#ff0000-fg}", uid: "Server" })
+			socket.emit("msg", { username: "Server", tag: "0000", msg: "{#ff0000-fg}You've been kicked.{/#ff0000-fg}", uid: "Server" })
 			socket.disconnect(true)
 			return true
 		} else {

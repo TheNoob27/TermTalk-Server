@@ -175,13 +175,19 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("msg", (data) => {
+		data.msg = data.msg.trim()
+		if (!data || !["uid", "username", "tag", "msg"].every((k) => k in data) || [data.uid, data.username, data.tag, data.msg].some(str => str === "")) return socket.emit("method_result", {
+			success: false,
+			method: "messageSend",
+			type: "insufficientData",
+			message: "The client did not return any or enough data."
+		})
 		if (!data.sessionID || !sessions.find(t => t.sessionID == data.sessionID)) return socket.emit("method_result", {
 			success: false,
 			method: "messageSend",
 			type: "invalidSessionID",
 			message: "The client did not provide any session ID or a valid one."
 		})
-
 		let session = sessions.find(t => t.sessionID == data.sessionID && t.uid == data.uid)
 		if (data.msg.trim().startsWith("/ban") && session.admin) {
 			// TODO: Handle ban
@@ -217,6 +223,7 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("disconnecting", () => {
+		socket.removeAllListeners()
 		let sessionIndex = sessions.findIndex(t => t.socketID == socket.id)
 		if (sessionIndex == -1) return
 		let session = sessions.splice(sessionIndex, 1)[0]
