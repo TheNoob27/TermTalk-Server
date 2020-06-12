@@ -198,13 +198,14 @@ io.on("connect", (socket) => {
 			message: "The client did not provide any session ID or a valid one."
 		})
 		let session = sessions.find(t => t.sessionID == data.sessionID && t.uid == data.uid)
-		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") {
-			let cmd = data.msg.trim().replace("/", "")
+
+		if (serverCache.addons.hardCommands.has(`${data.msg.slice(1).trim().split(/ +/g)[0]}`) && data.msg.charAt(0) == "/") {
+			let cmd = data.msg.slice(1).trim().split(/ +/g)[0]
 			let command = null
 			if (serverCache.addons.hardCommands.has(cmd)) command = serverCache.addons.hardCommands.get(cmd)
 			if (command !== null) {
 				if(command.data.permission == "admin" && !session.admin) return Utils.Server.send("You don't have permission to use this.", io, session.socketID)
-				command.run({ Utils, User, io, session, cache: serverCache}, data, data.msg.slice(1).trim().split(/ +/g))
+				command.run({ Utils, User, io, session, sessions, cache: serverCache}, data, data.msg.slice(1).trim().split(/ +/g))
 			}
 		}
 		if (data.uid === "Server") return;
