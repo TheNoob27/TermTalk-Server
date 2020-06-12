@@ -22,4 +22,5 @@ exports.data = {
     name: "kick",
     desc: "it kicks people yay",
     permission: "admin"
+
 };
