@@ -28,20 +28,40 @@ class Session {
 
 	static makeSessionID() {
 		return crypto.randomBytes(10).toString("hex")
-  }
+	}
   
   static sanitizeInputTags(text) {
     return text.replace(/[{}]/g, function(ch) {
-			return ch === '{' ? '{open}' : '{close}'
+			return ch === '{' ? '\\{' : '\\}'
 		})
 	}
 	
 	static kick(id, sockets) {
 		let socket = sockets.connected[id]
 		if(socket) {
-			socket.emit("msg", { username: "Server", tag: "0000", msg: "{#ff0000-fg}You've been kicked.{/#ff0000-fg}", uid: "Server" })
+			socket.emit("msg", { username: "Server", tag: "0000", msg: "You've been kicked.", uid: "Server" })
 			socket.disconnect(true)
 			return true
+		} else {
+			return false
+		}
+	}
+
+	static ban(uid, Service, socketID) {
+		if(Service.session.admin) return false
+		let socket = Service.io.sockets.connected[socketID]
+		if(socket) {
+			Service.User.ban(uid, (err) => {
+				if(err) return false
+
+				Service.User.getUserByUID(uid, (err, data) => {
+					if(err) return true
+
+					Service.server.broadcast(`${data.username}#${data.tag} has been banned.`)
+					socket.disconnect(true)
+					return true
+				})
+			})
 		} else {
 			return false
 		}

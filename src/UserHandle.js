@@ -42,7 +42,7 @@ class UserHandle {
 			type: "invalidUsername",
 			message: "The username provided is not allowed to be used."
 		})
-		const user = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid) || this.Database.prepare("SELECT * FROM users WHERE username=? AND tag=?").get(username, tag)
+		const user = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid) || this.Database.prepare("SELECT * FROM users WHERE username=? AND tag=?;").get(username, tag)
 		if (user) return callback({
 			type: "userExists",
 			message: "A user with this UID or username/tag combo already exists."
@@ -76,12 +76,35 @@ class UserHandle {
 	}
 
 	getUser(username, tag, callback) {
-		const user = this.Database.prepare("SELECT * FROM users WHERE username=? AND tag=?").get(username, tag)
+		const user = this.Database.prepare("SELECT * FROM users WHERE username=? AND tag=?;").get(username, tag)
 		if (!user) return callback({
 			type: "userNotExists",
 			message: "This user does not exist."
 		})
 		return callback(null, user)
+	}
+
+	ban(uid, callback) {
+		const user = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
+		const banned = this.Database.prepare("SELECT * FROM banned WHERE uid=?;").get(uid)
+
+		if (!user) return callback({
+			type: "userNotExists",
+			message: "This user does not exist."
+		})
+		if (banned) return callback({
+			type: "userBanned",
+			message: "This user is already banned."
+		})
+
+		this.Database.prepare("INSERT INTO banned (uid) VALUES (?);").run(uid)
+	}
+
+	isBanned(uid) {
+		const banned = this.Database.prepare("SELECT * FROM banned WHERE uid=?;").get(uid)
+		
+		if (banned) return true
+		return false
 	}
 
 	_hashPassword(password, callback) {
