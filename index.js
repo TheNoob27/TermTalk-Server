@@ -73,7 +73,7 @@ io.on("connection", (socket) => {
 						...err
 					})
 				} else {
-					socket.emit("auth_result", {
+					socket.emit("authResult", {
 						success: false,
 						method: "login",
 						type: "serverError",
