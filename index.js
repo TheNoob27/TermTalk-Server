@@ -55,8 +55,8 @@ const ci = readline.createInterface({
 
 io.on("connection", (socket) => {
 	console.log("A user connected.")
-	socket.emit("get_user_data")
-	socket.on("return_user_data", (data) => {
+	socket.emit("getUserData")
+	socket.on("returnUserData", (data) => {
 		if (data) {
 			socket.join("authed")
 			Utils.Server.broadcast(`${data.username}#${data.tag} has reconnected.`, io)
@@ -67,7 +67,7 @@ io.on("connection", (socket) => {
 		User.login(d.uid, d.password, (err, user, matched) => {
 			if (err) {
 				if (err.type === "userNotExists") {
-					socket.emit("auth_result", {
+					socket.emit("authResult", {
 						success: false,
 						method: "login",
 						...err
@@ -82,7 +82,7 @@ io.on("connection", (socket) => {
 					console.log(err)
 				}
 			}
-			if (!matched) return socket.emit("auth_result", {
+			if (!matched) return socket.emit("authResult", {
 				success: false,
 				method: "login",
 				type: "userCredentialsWrong",
@@ -92,7 +92,7 @@ io.on("connection", (socket) => {
 			let sessionID = Utils.Session.makeSessionID()
 			sessions.push({ uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id })
 
-			socket.emit("auth_result", {
+			socket.emit("authResult", {
 				success: true,
 				method: "login",
 				type: "success",
@@ -114,13 +114,13 @@ io.on("connection", (socket) => {
 		let { uid, username, tag, password } = data
 		uid = uid.trim(), username = username.trim(), tag = tag.trim(), password = password.trim()
 
-		if (!data || !["uid", "username", "tag", "password"].every((k) => k in data) || [uid, username, tag, password].some(str => str === "")) return socket.emit("auth_result", {
+		if (!data || !["uid", "username", "tag", "password"].every((k) => k in data) || [uid, username, tag, password].some(str => str === "")) return socket.emit("authResult", {
 			success: false,
 			method: "register",
 			type: "insufficientData",
 			message: "The client did not return any or enough data."
 		})
-		if (tag.length > 4) return socket.emit("auth_result", {
+		if (tag.length > 4) return socket.emit("authResult", {
 			success: false,
 			method: "register",
 			type: "invalidTag",
@@ -130,14 +130,14 @@ io.on("connection", (socket) => {
 		User.register(uid, username, tag, password, (err) => {
 			if (err) {
 				if (err.type === "userExists") {
-					socket.emit("auth_result", {
+					socket.emit("authResult", {
 						success: false,
 						method: "register",
 						...err
 					})
 					return;
 				} else {
-					socket.emit("auth_result", {
+					socket.emit("authResult", {
 						success: false,
 						method: "register",
 						type: "serverError",
@@ -151,7 +151,7 @@ io.on("connection", (socket) => {
 			let sessionID = Utils.Session.makeSessionID()
 			sessions.push({ uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id })
 
-			socket.emit("auth_result", {
+			socket.emit("authResult", {
 				success: true,
 				method: "register",
 				type: "success",
@@ -176,13 +176,13 @@ io.on("connection", (socket) => {
 
 	socket.on("msg", (data) => {
 		data.msg = data.msg.trim()
-		if (!data || !["uid", "username", "tag", "msg"].every((k) => k in data) || [data.uid, data.username, data.tag, data.msg].some(str => str === "")) return socket.emit("method_result", {
+		if (!data || !["uid", "username", "tag", "msg"].every((k) => k in data) || [data.uid, data.username, data.tag, data.msg].some(str => str === "")) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "insufficientData",
 			message: "The client did not return any or enough data."
 		})
-		if (!data.sessionID || !sessions.find(t => t.sessionID == data.sessionID)) return socket.emit("method_result", {
+		if (!data.sessionID || !sessions.find(t => t.sessionID == data.sessionID)) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "invalidSessionID",
