@@ -38,8 +38,7 @@ if (!fs.existsSync(`${__dirname}/Databases`)) fs.mkdirSync(`${__dirname}/Databas
 
 // Constructors
 const UserDB = new Database('./Databases/TermTalk_Users.db')
-const serverCache = require("./serverCache.js")
-const cache = require('./serverCache.js')
+const serverCache = require('./serverCache.js')
 const User = new Utils.UserHandle(UserDB)
 
 // Sessions
@@ -48,7 +47,7 @@ const sessions = [{ "sessionID": Utils.Session.makeSessionID(), "uid": "Server",
 // Last server message timestamp
 let lastServerMessageTime = null
 // Load in hardcoded commands
-cache.addons.connectors.loadCmd()
+serverCache.addons.connectors.loadCmd()
 
 const ci = readline.createInterface({
 	input: process.stdin,
@@ -191,42 +190,20 @@ io.on("connection", (socket) => {
 			message: "The client did not provide any session ID or a valid one."
 		})
 		let session = sessions.find(t => t.sessionID == data.sessionID && t.uid == data.uid)
-		if(cache.addons.hardCommands.has(`${data.msg.trim().replace("/","")}`)) {
-			let cmd = data.msg.trim().replace("/","")
-			if (cache.addons.hardCommands.has(cmd)) return cache.addons.hardCommands.get(cmd).then(cmd => {
-				cmd.run({Utils: Utils, io: io, session: session}, data.msg, data.msg.slice(1).trim().split(/ +/g))
-			})
-		}
-		if (data.msg.trim().startsWith("/ban") && session.admin) {
-			// TODO: Handle ban
-		} else if (data.msg.trim().startsWith("/kick") && session.admin) {
-			let uid = data.msg.trim().split(" ").slice(1).join(" ")
-			if (uid == session.uid) {
-				if (data.uid !== "Server") return Utils.Server.send("You cannot kick yourself.", io, session.socketID)
-				return console.log("You cannot kick yourself.")
-			}
-			if (!uid) {
-				if (data.uid !== "Server") return Utils.Server.send("No UID given.", io, session.socketID)
-				return console.log("No UID given.")
-			}
-			let sessionToKick = sessions.find(t => t.uid == uid)
-			if (!sessionToKick) {
-				if (data.uid !== "Server") return Utils.Server.send("Invalid account name given.", io, session.socketID)
-				returnnconsole.log("Invalid UID.")
-			}
-			if (Utils.Session.kick(sessionToKick.socketID, io.sockets)) {
-				if (data.uid !== "Server") return Utils.Server.send(`Successfully kicked user with the account name "${uid}."`, io, session.socketID)
-				return console.log(`Successfully kicked user with the account name "${uid}."`)
-			} else {
-				if (data.uid !== "Server") return Utils.Server.send(`Unable to kick user with the account name "${uid}." They may not be connected.`, io, session.socketID)
-				return console.log(`Unable to kick user with the account name "${uid}." They may not be connected.`)
+		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") {
+			let cmd = data.msg.trim().replace("/", "")
+			let command = null
+			if (serverCache.addons.hardCommands.has(cmd)) command = serverCache.addons.hardCommands.get(cmd)
+			if (command !== null) {
+				if(command.data.permission == "admin" && !session.admin) return Utils.Server.send("You don't have permission to use this.", io, session.socketID)
+				command.run({ Utils: Utils, io: io, session: session, cache: serverCache}, data, data.msg.slice(1).trim().split(/ +/g))
 			}
 		}
-
 		if (data.uid === "Server") return;
 
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
-		console.log(`${data.username}#${data.tag} > ${data.msg}`)
+		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
+		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
 	})
 
