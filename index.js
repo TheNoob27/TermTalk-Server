@@ -116,6 +116,10 @@ io.on("connect", (socket) => {
 
 			socket.join("authed")
 			Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io)
+			io.sockets.in("authed").emit("method", {
+				method: "userConnect",
+				user: `${user.username}#${user.tag}`
+			})
 		})
 	})
 
@@ -174,6 +178,11 @@ io.on("connect", (socket) => {
 			})
 			socket.join("authed")
 			Utils.Server.broadcast(`${username}#${tag} has connected.`, io)
+			io.sockets.in("authed").emit("method", {
+				method: "userConnect",
+				type: "serverRequest",
+				user: `${username}#${tag}`
+			})
 		})
 	})
 
@@ -190,7 +199,6 @@ io.on("connect", (socket) => {
 			type: "insufficientData",
 			message: "The client did not return any or enough data."
 		})
-		data.msg = data.msg.trim()
 		if (!data.sessionID || !sessions.find(t => t.sessionID == data.sessionID)) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
@@ -225,6 +233,11 @@ io.on("connect", (socket) => {
 			if (err) return;
 			console.log(`${d.username}#${d.tag} has disconnected.`)
 			if (session) {
+				io.sockets.in("authed").emit("method", {
+					method: "userDisconnect",
+					type: "serverRequest",
+					user: `${d.username}#${d.tag}`
+				})
 				Utils.Server.broadcast(`${d.username}#${d.tag} has disconnected.`, io)
 			}
 		})
