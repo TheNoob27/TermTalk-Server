@@ -220,7 +220,7 @@ io.on("connection", (socket) => {
 		let sessionIndex = sessions.findIndex(t => t.socketID == socket.id)
 		if (sessionIndex == -1) return
 		let session = sessions.splice(sessionIndex, 1)[0]
-		User.getUser(session.uid, (err, d) => {
+		User.getUserByUID(session.uid, (err, d) => {
 			if (err) return;
 			console.log(`${d.username}#${d.tag} has disconnected.`)
 			if (session) {

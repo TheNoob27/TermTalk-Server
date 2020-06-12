@@ -23,9 +23,9 @@
 */
 
 const bcrypt = require('bcrypt');
-const FlakeId = require('flakeid'); 
+const FlakeId = require('flakeid');
 const flake = new FlakeId({
-    timeOffset: (2020-1970)*31536000*1000
+	timeOffset: (2020 - 1970) * 31536000 * 1000
 })
 
 class UserHandle {
@@ -34,17 +34,17 @@ class UserHandle {
 	}
 
 	register(uid, username, tag, password, callback) {
-		if(uid === "Server") return callback({
+		if (uid === "Server") return callback({
 			type: "invalidUID",
 			message: "The UID provided is not allowed to be used."
 		})
-		const user = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
-		if(user) return callback({
+		const user = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid) || this.Database.prepare("SELECT * FROM users WHERE username=? AND tag=?").get(username, tag)
+		if (user) return callback({
 			type: "userExists",
-			message: "A user with this UID already exists."
+			message: "A user with this UID or username/tag combo already exists."
 		})
 		this._hashPassword(password, (err, hash) => {
-			if(err) return callback(err)
+			if (err) return callback(err)
 
 			this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash) VALUES (?, ?, ?, ?, ?);").run(flake.gen(), uid, username, tag, hash)
 			return callback(null, true)
@@ -53,18 +53,27 @@ class UserHandle {
 
 	login(uid, password, callback) {
 		const user = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
-		if(!user) return callback({
+		if (!user) return callback({
 			type: "userNotExists",
 			message: "This user does not exist."
 		})
-		bcrypt.compare(password, user.passwordHash, function(err, matched) {   
+		bcrypt.compare(password, user.passwordHash, function (err, matched) {
 			return err == null ? callback(null, user, matched) : callback(err);
 		})
 	}
 
-	getUser(uid, callback) {
+	getUserByUID(uid, callback) {
 		const user = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
-		if(!user) return callback({
+		if (!user) return callback({
+			type: "userNotExists",
+			message: "This user does not exist."
+		})
+		return callback(null, user)
+	}
+
+	getUser(username, tag, callback) {
+		const user = this.Database.prepare("SELECT * FROM users WHERE username=? AND tag=?").get(username, tag)
+		if (!user) return callback({
 			type: "userNotExists",
 			message: "This user does not exist."
 		})
@@ -72,7 +81,7 @@ class UserHandle {
 	}
 
 	_hashPassword(password, callback) {
-		bcrypt.genSalt(10, function(err, salt) {
+		bcrypt.genSalt(10, function (err, salt) {
 			if (err) return callback(err);
 
 			bcrypt.hash(password, salt, (err, hash) => {
