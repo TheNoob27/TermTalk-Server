@@ -28,18 +28,17 @@ const http = require('http').createServer()
 const io = require('socket.io')(http)
 const fs = require("fs")
 const readline = require("readline")
-
 const Database = require('better-sqlite3')
 
 // Our files or utils
 const Utils = require("./src/Utils.js")
 const Config = require("./config.json")
-
 // Make database directory
 if (!fs.existsSync(`${__dirname}/Databases`)) fs.mkdirSync(`${__dirname}/Databases`)
 
 // Constructors
 const UserDB = new Database('./Databases/TermTalk_Users.db')
+const serverCache = require('./serverCache.js')
 const User = new Utils.UserHandle(UserDB)
 
 // Sessions
@@ -47,6 +46,8 @@ const sessions = [{ "sessionID": Utils.Session.makeSessionID(), "uid": "Server",
 
 // Last server message timestamp
 let lastServerMessageTime = null
+// Load in hardcoded commands
+serverCache.addons.connectors.loadCmd()
 
 const ci = readline.createInterface({
 	input: process.stdin,
@@ -175,13 +176,13 @@ io.on("connect", (socket) => {
 	})
 
 	socket.on("msg", (data) => {
-		data.msg = data.msg.trim()
 		if (!data || !["uid", "username", "tag", "msg"].every((k) => k in data) || [data.uid, data.username, data.tag, data.msg].some(str => str === "")) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "insufficientData",
 			message: "The client did not return any or enough data."
 		})
+		data.msg = data.msg.trim()
 		if (!data.sessionID || !sessions.find(t => t.sessionID == data.sessionID)) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
@@ -189,45 +190,29 @@ io.on("connect", (socket) => {
 			message: "The client did not provide any session ID or a valid one."
 		})
 		let session = sessions.find(t => t.sessionID == data.sessionID && t.uid == data.uid)
-		if (data.msg.trim().startsWith("/ban") && session.admin) {
-			// TODO: Handle ban
-		} else if (data.msg.trim().startsWith("/kick") && session.admin) {
-			let uid = data.msg.trim().split(" ").slice(1).join(" ")
-			if (uid == session.uid) {
-				if (data.uid !== "Server") return Utils.Server.send("You cannot kick yourself.", io, session.socketID)
-				return console.log("You cannot kick yourself.")
-			}
-			if (!uid) {
-				if (data.uid !== "Server") return Utils.Server.send("No UID given.", io, session.socketID)
-				return console.log("No UID given.")
-			}
-			let sessionToKick = sessions.find(t => t.uid == uid)
-			if (!sessionToKick) {
-				if (data.uid !== "Server") return Utils.Server.send("Invalid account name given.", io, session.socketID)
-				returnnconsole.log("Invalid UID.")
-			}
-			if (Utils.Session.kick(sessionToKick.socketID, io.sockets)) {
-				if (data.uid !== "Server") return Utils.Server.send(`Successfully kicked user with the account name "${uid}."`, io, session.socketID)
-				return console.log(`Successfully kicked user with the account name "${uid}."`)
-			} else {
-				if (data.uid !== "Server") return Utils.Server.send(`Unable to kick user with the account name "${uid}." They may not be connected.`, io, session.socketID)
-				return console.log(`Unable to kick user with the account name "${uid}." They may not be connected.`)
+		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") {
+			let cmd = data.msg.trim().replace("/", "")
+			let command = null
+			if (serverCache.addons.hardCommands.has(cmd)) command = serverCache.addons.hardCommands.get(cmd)
+			if (command !== null) {
+				if(command.data.permission == "admin" && !session.admin) return Utils.Server.send("You don't have permission to use this.", io, session.socketID)
+				command.run({ Utils: Utils, io: io, session: session, cache: serverCache}, data, data.msg.slice(1).trim().split(/ +/g))
 			}
 		}
-
 		if (data.uid === "Server") return;
 
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
-		console.log(`${data.username}#${data.tag} > ${data.msg}`)
+		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
+		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
 	})
 
 	socket.on("disconnecting", () => {
 		socket.removeAllListeners()
 		let sessionIndex = sessions.findIndex(t => t.socketID == socket.id)
-		if (sessionIndex == -1) return
+		if (sessionIndex == -1) return console.log("A user has disconnected.")
 		let session = sessions.splice(sessionIndex, 1)[0]
-		User.getUser(session.uid, (err, d) => {
+		User.getUserByUID(session.uid, (err, d) => {
 			if (err) return;
 			console.log(`${d.username}#${d.tag} has disconnected.`)
 			if (session) {
@@ -257,3 +242,4 @@ http.listen(Config.port, () => {
 
 	console.log(`Server online on port ${Config.port}.`)
 })
+
