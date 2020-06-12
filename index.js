@@ -28,11 +28,11 @@ const http = require('http').createServer()
 const io = require('socket.io')(http)
 const fs = require("fs")
 const readline = require("readline")
-
 const Database = require('better-sqlite3')
 
 // Our files or utils
 const Utils = require("./src/Utils.js")
+const serverCache = require("./src/serverCache.js")
 const Config = require("./config.json")
 
 // Make database directory
@@ -48,12 +48,15 @@ const sessions = [{ "sessionID": Utils.Session.makeSessionID(), "uid": "Server",
 // Last server message timestamp
 let lastServerMessageTime = null
 
+// Load in hardcoded commands
+serverCache.addons.connectors.loadCmd()
+
 const ci = readline.createInterface({
 	input: process.stdin,
 	output: process.stdout
 })
 
-io.on("connection", (socket) => {
+io.on("connect", (socket) => {
 	console.log("A user connected.")
 	socket.emit("getUserData")
 	socket.on("returnUserData", (data) => {
@@ -197,37 +200,20 @@ io.on("connection", (socket) => {
 			message: "The client did not provide any session ID or a valid one."
 		})
 		let session = sessions.find(t => t.sessionID == data.sessionID && t.uid == data.uid)
-		data.msg = data.msg.trim()
-		if (data.msg.startsWith("/ban") && session.admin) {
-			// TODO: Handle ban
-		} else if (data.msg.startsWith("/kick") && session.admin) {
-			let uid = data.msg.split(" ").slice(1).join(" ")
-			if (uid == session.uid) {
-				if (data.uid !== "Server") return Utils.Server.send("You cannot kick yourself.", io, session.socketID)
-				return console.log("You cannot kick yourself.")
-			}
-			if (!uid) {
-				if (data.uid !== "Server") return Utils.Server.send("No UID given.", io, session.socketID)
-				return console.log("No UID given.")
-			}
-			let sessionToKick = sessions.find(t => t.uid == uid)
-			if (!sessionToKick) {
-				if (data.uid !== "Server") return Utils.Server.send("Invalid account name given.", io, session.socketID)
-				returnnconsole.log("Invalid UID.")
-			}
-			if (Utils.Session.kick(sessionToKick.socketID, io.sockets)) {
-				if (data.uid !== "Server") return Utils.Server.send(`Successfully kicked user with the account name "${uid}."`, io, session.socketID)
-				return console.log(`Successfully kicked user with the account name "${uid}."`)
-			} else {
-				if (data.uid !== "Server") return Utils.Server.send(`Unable to kick user with the account name "${uid}." They may not be connected.`, io, session.socketID)
-				return console.log(`Unable to kick user with the account name "${uid}." They may not be connected.`)
+		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") {
+			let cmd = data.msg.trim().replace("/", "")
+			let command = null
+			if (serverCache.addons.hardCommands.has(cmd)) command = serverCache.addons.hardCommands.get(cmd)
+			if (command !== null) {
+				if(command.data.permission == "admin" && !session.admin) return Utils.Server.send("You don't have permission to use this.", io, session.socketID)
+				command.run({ Utils: Utils, io: io, session: session, cache: serverCache}, data, data.msg.slice(1).trim().split(/ +/g))
 			}
 		}
-
 		if (data.uid === "Server") return;
 
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
-		console.log(`${data.username}#${data.tag} > ${data.msg}`)
+		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
+		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
 	})
 
@@ -249,59 +235,14 @@ io.on("connection", (socket) => {
 			}
 		})
 	})
-
-	socket.on("method", (data) => {
-		if (data.type != "clientRequest") return
-
-		if (!data || !["uid", "sessionID"].every((k) => k in data)) return socket.emit("methodResult", {
-			success: false,
-			method: data.method,
-			type: "insufficientData",
-			message: "The client did not return any or enough data."
-		})
-
-		if (!sessions.find(t => t.sessionID == data.sessionID)) return socket.emit("methodResult", {
-			success: false,
-			method: data.method,
-			type: "invalidSessionID",
-			message: "The client did not provide any session ID or a valid one."
-		})
-		if (data.method == "getMemberList") {
-			let memberList
-			try {
-				memberList = Utils.Server.getMemberList(sessions, User)
-			} catch (e) {
-				socket.emit("methodResult", {
-					success: false,
-					method: data.method,
-					type: "unableToGetMemberList",
-					message: "The server was unable to get member list"
-				})
-				return
-			}
-			socket.emit("methodResult", {
-				success: true,
-				method: data.method,
-				type: "success",
-				message: "Successfully got member list",
-				memberList
-			})
-		} else if (data.method == "reconnected") {
-			io.sockets.in("authed").emit("method", {
-				method: "userConnect",
-				type: "serverRequest",
-				user: `${data.username}#${data.tag}`
-			})
-		}
-	})
-
-	process.on("beforeExit", () => {
-		io.sockets.in("authed").emit("disconnect")
-	})
 })
 
 ci.on("SIGINT", () => {
 	process.exit(0)
+})
+
+process.on("beforeExit", () => {
+	io.sockets.in("authed").emit("disconnect")
 })
 
 http.listen(Config.port, () => {
@@ -316,3 +257,4 @@ http.listen(Config.port, () => {
 
 	console.log(`Server online on port ${Config.port}.`)
 })
+
