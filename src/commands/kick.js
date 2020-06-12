@@ -1,5 +1,5 @@
-exports.run = (Service, Data, args,) => {
-    let uid = Data.msg.trim().split(" ").slice(1).join(" ")
+exports.run = (Service, Data, args) => {
+    let uid = args[1]
     if (uid == Service.session.uid) {
         if (Data.uid !== "Server") return Service.Utils.Server.send("You cannot kick yourself.", Service.io, Service.session.socketID)
     }
@@ -19,7 +19,7 @@ exports.run = (Service, Data, args,) => {
     }
 }
 exports.data = {
-    name: 'kick',
-    desc: "it kicks people yay",
+    name: "kick",
+    desc: "Kicks a user.",
     permission: "admin"
 };
