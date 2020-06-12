@@ -1,7 +1,7 @@
 const cache = require("../../serverCache.js")
 const fs = require("fs")
 function load() {
-    fs.readdir('../commands/', (err, files) => {
+    fs.readdir('../commands', (err, files) => {
     if (err) console.log(`Error while loading command.\nError BeloW\n----------------------------------\n${err}\n----------------------------------\n`)
     files.forEach(f => {
         console.log(`Loading command ${f.substr(f.length, f.length-3)}!`)
