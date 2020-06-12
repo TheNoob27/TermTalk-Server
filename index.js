@@ -67,6 +67,12 @@ io.on("connect", (socket) => {
 		}
 	})
 	socket.on("login", (d) => {
+		if(User.isBanned(d.uid)) return socket.emit("authResult", {
+			success: false,
+			method: "login",
+			type: "userBanned",
+			message: "You are banned."
+		})
 		User.login(d.uid, d.password, (err, user, matched) => {
 			if (err) {
 				if (err.type === "userNotExists") {
@@ -199,7 +205,7 @@ io.on("connect", (socket) => {
 			if (serverCache.addons.hardCommands.has(cmd)) command = serverCache.addons.hardCommands.get(cmd)
 			if (command !== null) {
 				if(command.data.permission == "admin" && !session.admin) return Utils.Server.send("You don't have permission to use this.", io, session.socketID)
-				command.run({ Utils: Utils, io: io, session: session, cache: serverCache, sessions: sessions}, data, data.msg.slice(1).trim().split(/ +/g))
+				command.run({ Utils, User, io, session, sessions, cache: serverCache}, data, data.msg.slice(1).trim().split(/ +/g))
 			}
 		}
 		if (data.uid === "Server") return;
@@ -234,13 +240,22 @@ process.on("beforeExit", () => {
 })
 
 http.listen(Config.port, () => {
-	const table = UserDB.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'users';").get()
-	if (!table["count(*)"]) {
+	const userTable = UserDB.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'users';").get()
+	const bannedTable = UserDB.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'banned';").get()
+
+	if (!userTable["count(*)"]) {
 		UserDB.prepare("CREATE TABLE users (id INTEGER PRIMARY KEY, uid TEXT, username TEXT, tag TEXT, passwordHash TEXT);").run();
 		UserDB.prepare("CREATE UNIQUE INDEX idx_user_id ON users (id);").run()
+		UserDB.prepare("CREATE TABLE banned(uid TEXT PRIMARY KEY);").run();
+		UserDB.prepare("CREATE UNIQUE INDEX idx_uid ON banned (uid);").run()
 		UserDB.pragma("synchronous = 1")
 		UserDB.pragma("journal_mode = wal")
-		console.log("Created SQLite users database and table.")
+		console.log("Created SQLite DB and Users table.")
+	}
+	if (!bannedTable["count(*)"]) {
+		UserDB.prepare("CREATE TABLE banned(uid TEXT PRIMARY KEY);").run();
+		UserDB.prepare("CREATE UNIQUE INDEX idx_uid ON banned (uid);").run()
+		console.log("Created Banned Users table.")
 	}
 
 	console.log(`Server online on port ${Config.port}.`)

@@ -20,7 +20,6 @@ exports.run = (Service, Data, args) => {
 }
 exports.data = {
     name: "kick",
-    desc: "it kicks people yay",
+    desc: "Kicks a user.",
     permission: "admin"
-
 };
