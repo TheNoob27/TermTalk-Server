@@ -107,6 +107,10 @@ io.on("connection", (socket) => {
 
 			socket.join("authed")
 			Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io)
+			io.sockets.in("authed").emit("method", {
+				method: "userConnect",
+				user: `${user.username}#${user.tag}`
+			})
 		})
 	})
 
@@ -165,6 +169,11 @@ io.on("connection", (socket) => {
 			})
 			socket.join("authed")
 			Utils.Server.broadcast(`${username}#${tag} has connected.`, io)
+			io.sockets.in("authed").emit("method", {
+				method: "userConnect",
+				type: "serverRequest",
+				user: `${username}#${tag}`
+			})
 		})
 	})
 
@@ -181,7 +190,6 @@ io.on("connection", (socket) => {
 			type: "insufficientData",
 			message: "The client did not return any or enough data."
 		})
-		data.msg = data.msg.trim()
 		if (!data.sessionID || !sessions.find(t => t.sessionID == data.sessionID)) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
@@ -189,10 +197,11 @@ io.on("connection", (socket) => {
 			message: "The client did not provide any session ID or a valid one."
 		})
 		let session = sessions.find(t => t.sessionID == data.sessionID && t.uid == data.uid)
-		if (data.msg.trim().startsWith("/ban") && session.admin) {
+		data.msg = data.msg.trim()
+		if (data.msg.startsWith("/ban") && session.admin) {
 			// TODO: Handle ban
-		} else if (data.msg.trim().startsWith("/kick") && session.admin) {
-			let uid = data.msg.trim().split(" ").slice(1).join(" ")
+		} else if (data.msg.startsWith("/kick") && session.admin) {
+			let uid = data.msg.split(" ").slice(1).join(" ")
 			if (uid == session.uid) {
 				if (data.uid !== "Server") return Utils.Server.send("You cannot kick yourself.", io, session.socketID)
 				return console.log("You cannot kick yourself.")
@@ -231,9 +240,59 @@ io.on("connection", (socket) => {
 			if (err) return;
 			console.log(`${d.username}#${d.tag} has disconnected.`)
 			if (session) {
+				io.sockets.in("authed").emit("method", {
+					method: "userDisconnect",
+					type: "serverRequest",
+					user: `${d.username}#${d.tag}`
+				})
 				Utils.Server.broadcast(`${d.username}#${d.tag} has disconnected.`, io)
 			}
 		})
+	})
+
+	socket.on("method", (data) => {
+		if (data.type != "clientRequest") return
+
+		if (!data || !["uid", "sessionID"].every((k) => k in data)) return socket.emit("methodResult", {
+			success: false,
+			method: data.method,
+			type: "insufficientData",
+			message: "The client did not return any or enough data."
+		})
+
+		if (!sessions.find(t => t.sessionID == data.sessionID)) return socket.emit("methodResult", {
+			success: false,
+			method: data.method,
+			type: "invalidSessionID",
+			message: "The client did not provide any session ID or a valid one."
+		})
+		if (data.method == "getMemberList") {
+			let memberList
+			try {
+				memberList = Utils.Server.getMemberList(sessions, User)
+			} catch (e) {
+				socket.emit("methodResult", {
+					success: false,
+					method: data.method,
+					type: "unableToGetMemberList",
+					message: "The server was unable to get member list"
+				})
+				return
+			}
+			socket.emit("methodResult", {
+				success: true,
+				method: data.method,
+				type: "success",
+				message: "Successfully got member list",
+				memberList
+			})
+		} else if (data.method == "reconnected") {
+			io.sockets.in("authed").emit("method", {
+				method: "userConnect",
+				type: "serverRequest",
+				user: `${data.username}#${data.tag}`
+			})
+		}
 	})
 
 	process.on("beforeExit", () => {
