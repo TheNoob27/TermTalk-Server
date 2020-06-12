@@ -53,7 +53,7 @@ const ci = readline.createInterface({
 	output: process.stdout
 })
 
-io.on("connection", (socket) => {
+io.on("connect", (socket) => {
 	console.log("A user connected.")
 	socket.emit("getUserData")
 	socket.on("returnUserData", (data) => {
@@ -73,7 +73,7 @@ io.on("connection", (socket) => {
 						...err
 					})
 				} else {
-					socket.emit("auth_result", {
+					socket.emit("authResult", {
 						success: false,
 						method: "login",
 						type: "serverError",
