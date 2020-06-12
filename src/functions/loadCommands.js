@@ -2,7 +2,7 @@ function load() {
     const cache = require("../../serverCache.js")
     const fs = require("fs")
     fs.readdir('src/commands', (err, files) => {
-        if (err) console.log(`Error while loading command.\nError Below\n----------------------------------\n${err}\n----------------------------------\n`)
+        if (err) console.log(`Error while loading command.\nError Below\n${"-".repeat(36)}\n${err}\n${"-".repeat(36)}\n`)
         files.forEach(f => {
             console.log(`Loading command ${f}!`)
             if (!f.endsWith(".js")) return;
