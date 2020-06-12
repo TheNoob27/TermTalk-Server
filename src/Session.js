@@ -30,9 +30,9 @@ class Session {
 		return crypto.randomBytes(10).toString("hex")
 	}
   
-  static sanitizeInputTags(text) {
-    return text.replace(/[{}]/g, function(ch) {
-			return ch === '{' ? '\\{' : '\\}'
+	static sanitizeInputTags(text) {
+	    return text.replace(/[{}]/g, (ch) => {
+			return ch === '{' ? '\{' : '\}'
 		})
 	}
 	
