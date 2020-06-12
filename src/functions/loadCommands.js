@@ -1,5 +1,5 @@
 function load() {
-    const cache = require("../../serverCache.js")
+    const cache = require("../serverCache.js")
     const fs = require("fs")
     fs.readdir('src/commands', (err, files) => {
         if (err) console.log(`Error while loading command.\nError Below\n${"-".repeat(36)}\n${err}\n${"-".repeat(36)}\n`)

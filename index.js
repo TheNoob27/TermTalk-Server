@@ -32,13 +32,14 @@ const Database = require('better-sqlite3')
 
 // Our files or utils
 const Utils = require("./src/Utils.js")
+const serverCache = require("./src/serverCache.js")
 const Config = require("./config.json")
+
 // Make database directory
 if (!fs.existsSync(`${__dirname}/Databases`)) fs.mkdirSync(`${__dirname}/Databases`)
 
 // Constructors
 const UserDB = new Database('./Databases/TermTalk_Users.db')
-const serverCache = require('./serverCache.js')
 const User = new Utils.UserHandle(UserDB)
 
 // Sessions
@@ -46,6 +47,7 @@ const sessions = [{ "sessionID": Utils.Session.makeSessionID(), "uid": "Server",
 
 // Last server message timestamp
 let lastServerMessageTime = null
+
 // Load in hardcoded commands
 serverCache.addons.connectors.loadCmd()
 
@@ -54,7 +56,7 @@ const ci = readline.createInterface({
 	output: process.stdout
 })
 
-io.on("connection", (socket) => {
+io.on("connect", (socket) => {
 	console.log("A user connected.")
 	socket.emit("getUserData")
 	socket.on("returnUserData", (data) => {
@@ -220,14 +222,14 @@ io.on("connection", (socket) => {
 			}
 		})
 	})
-
-	process.on("beforeExit", () => {
-		io.sockets.in("authed").emit("disconnect")
-	})
 })
 
 ci.on("SIGINT", () => {
 	process.exit(0)
+})
+
+process.on("beforeExit", () => {
+	io.sockets.in("authed").emit("disconnect")
 })
 
 http.listen(Config.port, () => {
