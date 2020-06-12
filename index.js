@@ -73,7 +73,7 @@ io.on("connection", (socket) => {
 						...err
 					})
 				} else {
-					socket.emit("auth_result", {
+					socket.emit("authResult", {
 						success: false,
 						method: "login",
 						type: "serverError",
@@ -175,13 +175,13 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("msg", (data) => {
-		data.msg = data.msg.trim()
 		if (!data || !["uid", "username", "tag", "msg"].every((k) => k in data) || [data.uid, data.username, data.tag, data.msg].some(str => str === "")) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "insufficientData",
 			message: "The client did not return any or enough data."
 		})
+		data.msg = data.msg.trim()
 		if (!data.sessionID || !sessions.find(t => t.sessionID == data.sessionID)) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
@@ -225,9 +225,9 @@ io.on("connection", (socket) => {
 	socket.on("disconnecting", () => {
 		socket.removeAllListeners()
 		let sessionIndex = sessions.findIndex(t => t.socketID == socket.id)
-		if (sessionIndex == -1) return
+		if (sessionIndex == -1) return console.log("A user has disconnected.")
 		let session = sessions.splice(sessionIndex, 1)[0]
-		User.getUser(session.uid, (err, d) => {
+		User.getUserByUID(session.uid, (err, d) => {
 			if (err) return;
 			console.log(`${d.username}#${d.tag} has disconnected.`)
 			if (session) {

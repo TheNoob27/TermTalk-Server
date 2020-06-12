@@ -31,7 +31,9 @@ class Session {
   }
   
   static sanitizeInputTags(text) {
-    return text.replace(/\{/g, "{ ").replace(/\}/, "} ")
+    return text.replace(/[{}]/g, function(ch) {
+			return ch === '{' ? '{open}' : '{close}'
+		})
 	}
 	
 	static kick(id, sockets) {
