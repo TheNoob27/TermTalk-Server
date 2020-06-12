@@ -175,13 +175,13 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("msg", (data) => {
-		data.msg = data.msg.trim()
 		if (!data || !["uid", "username", "tag", "msg"].every((k) => k in data) || [data.uid, data.username, data.tag, data.msg].some(str => str === "")) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "insufficientData",
 			message: "The client did not return any or enough data."
 		})
+		data.msg = data.msg.trim()
 		if (!data.sessionID || !sessions.find(t => t.sessionID == data.sessionID)) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",

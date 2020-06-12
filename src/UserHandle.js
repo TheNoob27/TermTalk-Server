@@ -38,6 +38,10 @@ class UserHandle {
 			type: "invalidUID",
 			message: "The UID provided is not allowed to be used."
 		})
+		if(username == "Server") return callback({
+			type: "invalidUsername",
+			message: "The username provided is not allowed to be used."
+		})
 		const user = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid) || this.Database.prepare("SELECT * FROM users WHERE username=? AND tag=?").get(username, tag)
 		if (user) return callback({
 			type: "userExists",
