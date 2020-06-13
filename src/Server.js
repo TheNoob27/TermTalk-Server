@@ -22,6 +22,8 @@
 	SOFTWARE.
 */
 
+const Config = require("../config.json")
+
 class Server {
 	static send(msg, io, socketID) {
 		return io.sockets.connected[socketID].emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
@@ -32,10 +34,16 @@ class Server {
 	}
 
 	static getMemberList(sessions, UserHandle) {
-		return sessions.map(t => UserHandle.getUserByUID(t.uid, (err, user) => {
+		let clonedSessions = JSON.parse(JSON.stringify(sessions))
+		let length = clonedSessions.length
+		if(Config.allowLurking) clonedSessions = clonedSessions.filter(t => !t.lurking)
+		let lurkers = length - clonedSessions.length
+		let list = clonedSessions.map(t => UserHandle.getUserByUID(t.uid, (err, user) => {
 			if (err) return ""
 			return `${user.username}#${user.tag}`
 		})).filter(t => t != "")
+		if(lurkers > 0) list.push(`${list.length > 0 ? `+ ${lurkers} lurker(s)` : `${lurkers} lurker(s)`}`)
+		return list
 	}
 
 	static userIsConnected(uid, sessions) {

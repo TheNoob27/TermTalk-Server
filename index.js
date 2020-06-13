@@ -77,7 +77,7 @@ io.on("connect", (socket) => {
 			}
 			socket.emit("methodResult", {
 				success: true,
-				method: data.method,
+				method: "getMemberList",
 				type: "success",
 				message: "Successfully got member list",
 				memberList
@@ -239,8 +239,15 @@ io.on("connect", (socket) => {
 			if (command !== null) {
 				if (command.data.permission == "admin" && !session.admin) return Utils.Server.send("You don't have permission to use this.", io, session.socketID)
 				command.run({ Utils, User, io, session, sessions, cache: serverCache }, data, data.msg.slice(1).trim().split(/ +/g))
+				return
 			}
 		}
+		if(session.lurking) return socket.emit("methodResult", {
+			success: false,
+			method: "messageSend",
+			type: "userIsLurking",
+			message: "Client cannot send messages while lurking."
+		})
 		if (data.uid === "Server") return;
 
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
