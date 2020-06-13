@@ -1,10 +1,17 @@
 exports.run = (Service, Data, args) => {
-    let uid = args[1]
+    args.shift()
+    let uid = args.join(" ")
     if (uid == Service.session.uid) {
         if (Data.uid !== "Server") return Service.Utils.Server.send("You cannot kick yourself.", Service.io, Service.session.socketID)
     }
     if (!uid) {
         if (Data.uid !== "Server") return Service.Utils.Server.send("No UID given.", Service.io, Service.session.socketID)
+    }
+    if (uid.includes("#")) {
+        Service.User.getUser(uid, (err, user) => {
+            if (err) return Service.Utils.Server.send("Invalid tag given.", Service.io, Service.session.socketID)
+            uid = user.uid
+        })
     }
     let sessionToKick = Service.sessions.find(t => t.uid == uid)
     if (!sessionToKick) {

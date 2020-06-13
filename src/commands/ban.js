@@ -1,5 +1,6 @@
 exports.run = (Service, Data, args, ) => {
-    let banUid = Data.msg.trim().split(" ").slice(1).join(" ")
+    args.shift()
+    let banUid = args.join(" ")
     if (banUid == Service.session.uid) {
         if (Data.uid !== "Server") return Service.Utils.Server.send("You cannot ban yourself.", Service.io, Service.session.socketID)
         return console.log("You cannot ban yourself.")
@@ -7,6 +8,12 @@ exports.run = (Service, Data, args, ) => {
     if (!banUid) {
         if (Data.uid !== "Server") return Service.Utils.Server.send("No UID given.", Service.io, Service.session.socketID)
         return console.log("No UID given.")
+    }
+    if (banuid.includes("#")) {
+        Service.User.getUser(uid, (err, user) => {
+            if (err) return Service.Utils.Server.send("Invalid tag given.", Service.io, Service.session.socketID)
+            banuid = user.uid
+        })
     }
     let sessionToBan = Service.sessions.find(t => t.uid == banUid)
     if (!sessionToBan) {
