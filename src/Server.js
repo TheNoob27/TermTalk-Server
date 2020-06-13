@@ -30,6 +30,17 @@ class Server {
 	static broadcast(msg, io) {
 		return io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
 	}
+
+	static getMemberList(sessions, UserHandle) {
+		return sessions.map(t => UserHandle.getUserByUID(t.uid, (err, user) => {
+			if (err) return ""
+			return `${user.username}#${user.tag}`
+		})).filter(t => t != "")
+	}
+
+	static userIsConnected(uid, sessions) {
+		return sessions.find(t => t.uid == uid) !== undefined
+	}
 }
 
 module.exports = Server;

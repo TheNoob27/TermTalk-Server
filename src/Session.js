@@ -31,8 +31,8 @@ class Session {
 	}
   
 	static sanitizeInputTags(text) {
-	    return text.replace(/[{}]/g, (ch) => {
-			return ch === '{' ? '\{' : '\}'
+		return text.replace(/[{}]/g, function(ch) {
+			return ch === '{' ? '{open}' : '{close}'
 		})
 	}
 	
