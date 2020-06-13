@@ -6,7 +6,10 @@ exports.run = (Service, Data, args, ) => {
         return console.log("No UID given.")
     }
     if (banUid.includes("#")) {
-        Service.User.getUser(...banUid.split("#"), (err, user) => {
+        let uidArr = banUid.split("#")
+        let tag = uidArr.pop()
+        let username = uidArr.join("#")
+        Service.User.getUser(username, tag, (err, user) => {
             if (err) return Service.Utils.Server.send("Invalid tag given.", Service.io, Service.session.socketID)
             banUid = user.uid
         })

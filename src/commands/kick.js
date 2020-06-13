@@ -5,7 +5,10 @@ exports.run = (Service, Data, args) => {
         if (Data.uid !== "Server") return Service.Utils.Server.send("No UID given.", Service.io, Service.session.socketID)
     }
     if (uid.includes("#")) {
-        Service.User.getUser(...uid.split("#"), (err, user) => {
+        let uidArr = uid.split("#")
+        let tag = uidArr.pop()
+        let username = uidArr.join("#")
+        Service.User.getUser(username, tag, (err, user) => {
             if (err) return Service.Utils.Server.send("Invalid tag given.", Service.io, Service.session.socketID)
             uid = user.uid
         })
