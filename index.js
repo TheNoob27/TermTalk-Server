@@ -67,7 +67,13 @@ io.on("connect", (socket) => {
 		}
 	})
 	socket.on("login", (d) => {
-		if(User.isBanned(d.uid)) return socket.emit("authResult", {
+		if (Utils.Server.userIsConnected(d.uid, sessions)) return socket.emit("authResult", {
+			success: false,
+			method: "login",
+			type: "userAlreadyConnected",
+			message: "You are already connected."
+		})
+		if (User.isBanned(d.uid)) return socket.emit("authResult", {
 			success: false,
 			method: "login",
 			type: "userBanned",
@@ -119,7 +125,7 @@ io.on("connect", (socket) => {
 			io.sockets.in("authed").emit("method", {
 				method: "userConnect",
 				user: `${user.username}#${user.tag}`,
-				type:"serverRequest"
+				type: "serverRequest"
 			})
 		})
 	})
@@ -213,13 +219,25 @@ io.on("connect", (socket) => {
 			let command = null
 			if (serverCache.addons.hardCommands.has(cmd)) command = serverCache.addons.hardCommands.get(cmd)
 			if (command !== null) {
-				if(command.data.permission == "admin" && !session.admin) return Utils.Server.send("You don't have permission to use this.", io, session.socketID)
-				command.run({ Utils, User, io, session, sessions, cache: serverCache}, data, data.msg.slice(1).trim().split(/ +/g))
+				if (command.data.permission == "admin" && !session.admin) return Utils.Server.send("You don't have permission to use this.", io, session.socketID)
+				command.run({ Utils, User, io, session, sessions, cache: serverCache }, data, data.msg.slice(1).trim().split(/ +/g))
 			}
 		}
 		if (data.uid === "Server") return;
 
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
+		if(data.msg.trim().length > Config.maxCharacterLength) return socket.emit("methodResult", {
+			success: false,
+			method: "messageSend",
+			type: "messageTooBig",
+			message: `The message the client attempted to send was above ${Config.maxCharacterLength} characters.`
+		})
+		if(data.msg.trim().length == 0) return socket.emit("methodResult", {
+			success: false,
+			method: "messageSend",
+			type: "noMessageContent",
+			message: `The message the client attempted to send had no body.`
+		})
 		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
