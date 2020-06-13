@@ -1,6 +1,6 @@
 {
   "name": "termtalk-server",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "The server for TermTalk.",
   "main": "index.js",
   "scripts": {
