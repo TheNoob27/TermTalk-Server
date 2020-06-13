@@ -57,34 +57,10 @@ const ci = readline.createInterface({
 })
 
 io.on("connect", (socket) => {
-	if(Object.keys(io.sockets.connected).length > Config.maxSlots) {
-		socket.emit("methodResult", {
-			success: false,
-			method: "connect",
-			type: "maxSlots",
-			message: "The server is currently full. Try again later."
-		})
-		socket.disconnect(true)
-		return;
-	}
-	
-	console.log("A user has connected.")
-	socket.emit("methodResult", {
-		success: true,
-		method: "connect",
-		type: "success",
-		message: "Successfully connected."
-	})
-
+	console.log("A user connected.")
 	socket.emit("getUserData")
 	socket.on("returnUserData", (data) => {
 		if (data) {
-			if (User.isBanned(data.uid)) return socket.emit("authResult", {
-				success: false,
-				method: "reconnect",
-				type: "userBanned",
-				message: "You are banned."
-			})
 			socket.join("authed")
 			Utils.Server.broadcast(`${data.username}#${data.tag} has reconnected.`, io)
 			if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })
@@ -295,13 +271,13 @@ io.on("connect", (socket) => {
 			type: "noMessageContent",
 			message: `The message the client attempted to send had no body.`
 		})
-		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
+		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`.replace("\n", ""))
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		if (serverCache.addons.chat.locked && !session.admin) return Utils.Server.send("The chat is currently locked.", io, session.socketID)
 		//locks the chat except for admins
 		if (serverCache.addons.chat.chatHistory.length > 30 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory.pop()
 		//limit history to last 30 messages (all that will fit the screen)
-		if(Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push(`${data.username}#${data.tag} > ${data.msg}`)
+		if(Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push(`${data.username}#${data.tag} > ${data.msg}`.replace("\n", ""))
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
 	})
 
