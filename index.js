@@ -57,10 +57,34 @@ const ci = readline.createInterface({
 })
 
 io.on("connect", (socket) => {
-	console.log("A user connected.")
+	if(Object.keys(io.sockets.connected).length > Config.maxSlots) {
+		socket.emit("methodResult", {
+			success: false,
+			method: "connect",
+			type: "maxSlots",
+			message: "The server is currently full. Try again later."
+		})
+		socket.disconnect(true)
+		return;
+	}
+	
+	console.log("A user has connected.")
+	socket.emit("methodResult", {
+		success: true,
+		method: "connect",
+		type: "success",
+		message: "Successfully connected."
+	})
+
 	socket.emit("getUserData")
 	socket.on("returnUserData", (data) => {
 		if (data) {
+			if (User.isBanned(data.uid)) return socket.emit("authResult", {
+				success: false,
+				method: "reconnect",
+				type: "userBanned",
+				message: "You are banned."
+			})
 			socket.join("authed")
 			Utils.Server.broadcast(`${data.username}#${data.tag} has reconnected.`, io)
 			if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })
