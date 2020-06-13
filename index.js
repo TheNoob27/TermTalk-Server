@@ -64,6 +64,24 @@ io.on("connect", (socket) => {
 			socket.join("authed")
 			Utils.Server.broadcast(`${data.username}#${data.tag} has reconnected.`, io)
 			if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })
+			io.sockets.in("authed").emit("method", {
+				method: "userConnect",
+				type: "serverRequest",
+				user: `${data.username}#${data.tag}`
+			})
+			let memberList
+			try {
+				memberList = Utils.Server.getMemberList(sessions, User)
+			} catch (e) {
+				return
+			}
+			socket.emit("methodResult", {
+				success: true,
+				method: "getMemberList",
+				type: "success",
+				message: "Successfully got member list",
+				memberList
+			})
 		}
 	})
 	socket.on("login", (d) => {
@@ -221,18 +239,25 @@ io.on("connect", (socket) => {
 			if (command !== null) {
 				if (command.data.permission == "admin" && !session.admin) return Utils.Server.send("You don't have permission to use this.", io, session.socketID)
 				command.run({ Utils, User, io, session, sessions, cache: serverCache }, data, data.msg.slice(1).trim().split(/ +/g))
+				return
 			}
 		}
+		if(session.lurking) return socket.emit("methodResult", {
+			success: false,
+			method: "messageSend",
+			type: "userIsLurking",
+			message: "Client cannot send messages while lurking."
+		})
 		if (data.uid === "Server") return;
 
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
-		if(data.msg.trim().length > Config.maxCharacterLength) return socket.emit("methodResult", {
+		if (data.msg.trim().length > Config.maxCharacterLength) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "messageTooBig",
 			message: `The message the client attempted to send was above ${Config.maxCharacterLength} characters.`
 		})
-		if(data.msg.trim().length == 0) return socket.emit("methodResult", {
+		if (data.msg.trim().length == 0) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "noMessageContent",
@@ -297,12 +322,6 @@ io.on("connect", (socket) => {
 				type: "success",
 				message: "Successfully received the member list.",
 				memberList
-			})
-		} else if (data.method == "reconnected") {
-			io.sockets.in("authed").emit("method", {
-				method: "userConnect",
-				type: "serverRequest",
-				user: `${data.username}#${data.tag}`
 			})
 		}
 	})
