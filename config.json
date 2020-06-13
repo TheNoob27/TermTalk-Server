@@ -3,5 +3,6 @@
 	"adminUIDs": [],
 	"maxCharacterLength": 1600,
 	"allowLurking": false,
+	"maxSlots": 20,
 	"saveLoadHistory": true
 }
