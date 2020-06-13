@@ -161,6 +161,7 @@ io.on("connect", (socket) => {
 				type: "success",
 				message: "Logged in successfully.",
 				user: {
+					id: user.id,
 					uid: user.uid,
 					username: user.username,
 					tag: user.tag,
@@ -196,7 +197,7 @@ io.on("connect", (socket) => {
 			message: "The client provided an invalid tag, or one above 4 characters."
 		})
 
-		User.register(uid, username, tag, password, (err) => {
+		User.register(uid, username, tag, password, (err, id) => {
 			if (err) {
 				if (err.type === "userExists") {
 					socket.emit("authResult", {
@@ -226,6 +227,7 @@ io.on("connect", (socket) => {
 				type: "success",
 				message: "Registered successfully.",
 				user: {
+					id,
 					uid,
 					username,
 					tag,
@@ -246,11 +248,11 @@ io.on("connect", (socket) => {
 	ci.on("line", (input) => {
 		if (lastServerMessageTime == Date.now()) return
 		lastServerMessageTime = Date.now()
-		io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg: input, uid: "Server" })
+		io.sockets.in("authed").emit("msg", { username: "Server", tag: "0000", msg: input, uid: "Server" })
 	})
 
 	socket.on("msg", (data) => {
-		if (!data || !["uid", "username", "tag", "msg"].every((k) => k in data) || [data.uid, data.username, data.tag, data.msg].some(str => str === "")) return socket.emit("methodResult", {
+		if (!data || !["id", "uid", "username", "tag", "msg"].every((k) => k in data) || [data.id, data.uid, data.username, data.tag, data.msg].some(str => str === "")) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "insufficientData",
@@ -303,7 +305,7 @@ io.on("connect", (socket) => {
 			type: "noMessageContent",
 			message: `The message the client attempted to send had no body.`
 		})
-		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
+	
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		if (serverCache.addons.chat.locked && !session.admin) return socket.emit("methodResult", {
 			success: false,
@@ -311,10 +313,12 @@ io.on("connect", (socket) => {
 			type: "serverLocked",
 			message: `The client attempted to send a message while the server was locked.`
 		})
+		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
 		//locks the chat except for admins
 		if (serverCache.addons.chat.chatHistory.length > 30 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory.pop()
+		
 		//limit history to last 30 messages (all that will fit the screen)
-		if(Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push(`${data.username}#${data.tag} > ${data.msg}`)
+		if(Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push({username: data.username, tag: data.tag, msg: data.msg.replace("\n", "")})
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
 	})
 
