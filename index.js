@@ -243,8 +243,8 @@ io.on("connect", (socket) => {
 		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		if(serverCache.addons.monitor.chatHistory.length > 30) serverCache.addons.monitor.chatHistory.pop()
-		//limit history to last 30 messages
-		serverCache.addons.monitor.chatHistory.unshift(`${data.username}#${data.tag} | ${data.msg}`)
+		//limit history to last 30 messages (all that will fit the screen)
+		serverCache.addons.monitor.chatHistory.unshift(`${data.username}#${data.tag} > ${data.msg}`)
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
 	})
 

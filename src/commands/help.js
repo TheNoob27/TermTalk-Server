@@ -1,8 +1,9 @@
 exports.run = (Service, Data, args) => {
+    //this is kinda gross but couldnt think of a better way to do it
     function format(cmdName) {
         let space = ""
-        if (cmdName.length + 5 !== 13) {
-            for (let i = cmdName.length + 5; i < 13; i++) {
+        if (cmdName.length + 5 !== 16) {
+            for (let i = cmdName.length + 5; i < 16; i++) {
                 space += " "
             }
             return space;
