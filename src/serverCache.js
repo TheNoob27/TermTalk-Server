@@ -2,10 +2,13 @@ let cache = {}
 cache.addons = {
 	textCommands: new Map(),
 	hardCommands: new Map(),
+	chat: {
+		chatHistory: [],
+		locked: false
+	},
 	monitor: {
 		connected: 0,
-		started: Date.now(),
-		chatHistory: []
+		started: Date.now()
 	},
 	connectors: {
 		loadCmd: require("./functions/loadCommands.js"),
