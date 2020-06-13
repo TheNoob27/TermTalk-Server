@@ -57,10 +57,34 @@ const ci = readline.createInterface({
 })
 
 io.on("connect", (socket) => {
-	console.log("A user connected.")
+	if(Object.keys(io.sockets.connected).length > Config.maxSlots) {
+		socket.emit("methodResult", {
+			success: false,
+			method: "connect",
+			type: "maxSlots",
+			message: "The server is currently full. Try again later."
+		})
+		socket.disconnect(true)
+		return;
+	}
+	
+	console.log("A user has connected.")
+	socket.emit("methodResult", {
+		success: true,
+		method: "connect",
+		type: "success",
+		message: "Successfully connected."
+	})
+
 	socket.emit("getUserData")
 	socket.on("returnUserData", (data) => {
 		if (data) {
+			if (User.isBanned(data.uid)) return socket.emit("authResult", {
+				success: false,
+				method: "reconnect",
+				type: "userBanned",
+				message: "You are banned."
+			})
 			socket.join("authed")
 			Utils.Server.broadcast(`${data.username}#${data.tag} has reconnected.`, io)
 			if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })
@@ -73,13 +97,19 @@ io.on("connect", (socket) => {
 			try {
 				memberList = Utils.Server.getMemberList(sessions, User)
 			} catch (e) {
+				socket.emit("methodResult", {
+					success: false,
+					method: "getMemberList",
+					type: "serverError",
+					message: "The server encountered an error. Be sure to contact the admin."
+				})
 				return
 			}
 			socket.emit("methodResult", {
 				success: true,
 				method: "getMemberList",
 				type: "success",
-				message: "Successfully got member list",
+				message: "Successfully received the member list.",
 				memberList
 			})
 		}
@@ -140,6 +170,7 @@ io.on("connect", (socket) => {
 
 			socket.join("authed")
 			Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io)
+			if(Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
 			io.sockets.in("authed").emit("method", {
 				method: "userConnect",
 				user: `${user.username}#${user.tag}`,
@@ -203,6 +234,7 @@ io.on("connect", (socket) => {
 			})
 			socket.join("authed")
 			Utils.Server.broadcast(`${username}#${tag} has connected.`, io)
+			if(Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
 			io.sockets.in("authed").emit("method", {
 				method: "userConnect",
 				type: "serverRequest",
@@ -242,7 +274,7 @@ io.on("connect", (socket) => {
 				return
 			}
 		}
-		if(session.lurking) return socket.emit("methodResult", {
+		if (session.lurking) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "userIsLurking",
@@ -265,6 +297,11 @@ io.on("connect", (socket) => {
 		})
 		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
+		if (serverCache.addons.chat.locked && !session.admin) return Utils.Server.send("The chat is currently locked.", io, session.socketID)
+		//locks the chat except for admins
+		if (serverCache.addons.chat.chatHistory.length > 30 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory.pop()
+		//limit history to last 30 messages (all that will fit the screen)
+		if(Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push(`${data.username}#${data.tag} > ${data.msg}`)
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
 	})
 
@@ -304,7 +341,7 @@ io.on("connect", (socket) => {
 			message: "The client did not provide any session ID or a valid one."
 		})
 		if (data.method == "getMemberList") {
-			let memberList
+			let memberList;
 			try {
 				memberList = Utils.Server.getMemberList(sessions, User)
 			} catch (e) {
@@ -312,7 +349,7 @@ io.on("connect", (socket) => {
 					success: false,
 					method: data.method,
 					type: "unableToGetMemberList",
-					message: "The server was unable to get member list"
+					message: "The server was unable to get the member list."
 				})
 				return
 			}
@@ -320,7 +357,7 @@ io.on("connect", (socket) => {
 				success: true,
 				method: data.method,
 				type: "success",
-				message: "Successfully got member list",
+				message: "Successfully received the member list.",
 				memberList
 			})
 		}
