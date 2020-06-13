@@ -5,8 +5,7 @@ cache.addons = {
 	monitor: {
 		connected: 0,
 		started: Date.now(),
-		chatHistory: [],
-		askReddit: new Map()
+		chatHistory: []
 	},
 	connectors: {
 		loadCmd: require("./functions/loadCommands.js"),
