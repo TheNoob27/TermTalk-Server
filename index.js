@@ -170,6 +170,7 @@ io.on("connect", (socket) => {
 
 			socket.join("authed")
 			Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io)
+			if(Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
 			io.sockets.in("authed").emit("method", {
 				method: "userConnect",
 				user: `${user.username}#${user.tag}`,
@@ -233,6 +234,7 @@ io.on("connect", (socket) => {
 			})
 			socket.join("authed")
 			Utils.Server.broadcast(`${username}#${tag} has connected.`, io)
+			if(Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
 			io.sockets.in("authed").emit("method", {
 				method: "userConnect",
 				type: "serverRequest",
@@ -272,7 +274,7 @@ io.on("connect", (socket) => {
 				return
 			}
 		}
-		if(session.lurking) return socket.emit("methodResult", {
+		if (session.lurking) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "userIsLurking",
@@ -295,6 +297,11 @@ io.on("connect", (socket) => {
 		})
 		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
+		if (serverCache.addons.chat.locked && !session.admin) return Utils.Server.send("The chat is currently locked.", io, session.socketID)
+		//locks the chat except for admins
+		if (serverCache.addons.chat.chatHistory.length > 30 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory.pop()
+		//limit history to last 30 messages (all that will fit the screen)
+		if(Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push(`${data.username}#${data.tag} > ${data.msg}`)
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
 	})
 
