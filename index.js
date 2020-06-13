@@ -161,7 +161,7 @@ io.on("connect", (socket) => {
 				type: "success",
 				message: "Logged in successfully.",
 				user: {
-					id: user.id
+					id: user.id,
 					uid: user.uid,
 					username: user.username,
 					tag: user.tag,
