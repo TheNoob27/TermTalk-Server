@@ -262,6 +262,14 @@ io.on("connect", (socket) => {
 			type: "invalidSessionID",
 			message: "The client did not provide any session ID or a valid one."
 		})
+
+		if([data.uid, data.username, data.tag, data.msg].some(str => typeof str != "string")) return socket.emit("methodResult", {
+			success: false,
+			method: "messageSend",
+			type: "invalidDataTypes",
+			message: "The client did not provide the correct data types in the message."
+		})
+
 		let session = sessions.find(t => t.sessionID == data.sessionID && t.uid == data.uid)
 
 		if (serverCache.addons.hardCommands.has(`${data.msg.slice(1).trim().split(/ +/g)[0]}`) && data.msg.charAt(0) == "/") {
@@ -297,7 +305,12 @@ io.on("connect", (socket) => {
 		})
 		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
-		if (serverCache.addons.chat.locked && !session.admin) return Utils.Server.send("The chat is currently locked.", io, session.socketID)
+		if (serverCache.addons.chat.locked && !session.admin) return socket.emit("methodResult", {
+			success: false,
+			method: "messageSend",
+			type: "serverLocked",
+			message: `The client attempted to send a message while the server was locked.`
+		})
 		//locks the chat except for admins
 		if (serverCache.addons.chat.chatHistory.length > 30 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory.pop()
 		//limit history to last 30 messages (all that will fit the screen)
