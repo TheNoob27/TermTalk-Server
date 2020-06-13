@@ -279,7 +279,7 @@ io.on("connect", (socket) => {
 			message: "The client did not provide any session ID or a valid one."
 		})
 		if (data.method == "getMemberList") {
-			let memberList
+			let memberList;
 			try {
 				memberList = Utils.Server.getMemberList(sessions, User)
 			} catch (e) {
@@ -287,7 +287,7 @@ io.on("connect", (socket) => {
 					success: false,
 					method: data.method,
 					type: "unableToGetMemberList",
-					message: "The server was unable to get member list"
+					message: "The server was unable to get the member list."
 				})
 				return
 			}
@@ -295,7 +295,7 @@ io.on("connect", (socket) => {
 				success: true,
 				method: data.method,
 				type: "success",
-				message: "Successfully got member list",
+				message: "Successfully received the member list.",
 				memberList
 			})
 		} else if (data.method == "reconnected") {
