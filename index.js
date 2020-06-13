@@ -305,7 +305,7 @@ io.on("connect", (socket) => {
 			type: "noMessageContent",
 			message: `The message the client attempted to send had no body.`
 		})
-
+	
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		if (serverCache.addons.chat.locked && !session.admin) return socket.emit("methodResult", {
 			success: false,
@@ -318,8 +318,8 @@ io.on("connect", (socket) => {
 		if (serverCache.addons.chat.chatHistory.length > 30 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory.pop()
 		
 		//limit history to last 30 messages (all that will fit the screen)
-		if(Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push(`${data.username}#${data.tag} > ${data.msg}`)
-		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
+		if(Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push({username: data.username, tag: data.tag, msg: data.msg.replace("\n", "")})
+		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
 	})
 
 	socket.on("disconnecting", () => {
