@@ -1,4 +1,4 @@
-exports.run = (Service, Data, args,) => {
+exports.run = (Service, Data, args) => {
     function format(cmdName) {
         let space = ""
         if (cmdName.length + 5 !== 13) {
@@ -8,17 +8,27 @@ exports.run = (Service, Data, args,) => {
             return space;
         } else return ""
     }
-    let commands = "", skipped = 0
-    let commandHold = Array.from(Service.cache.addons.hardCommands)
-    Service.Utils.Server.send(`Help Menu`, Service.io, Service.session.socketID)
+    let commandHold = Array.from(Service.cache.addons.hardCommands), skipped = 0, commands = 0
+    Service.Utils.Server.send(`Available Commands`, Service.io, Service.session.socketID)
     Service.Utils.Server.send(`-`.repeat(50), Service.io, Service.session.socketID)
-    for (let i = 0; i < commandHold.length; i++) {
-        if(commandHold[i][1].data.permission == "admin" && !Service.session.admin) {
-            skipped+=1
+    if (args[1] && Number.isInteger(args[1])) i = Number.isInteger(args[1]) * 8 - 8
+    if (!args[1] || args[1] <= 1) i = 0
+    for (i; i < commandHold.length; i++) {
+        if (commands >= 8) break;
+        //no more than 8 commands a page
+        if (!commandHold) continue;
+        else commands += 1;
+        //counts up to check for existing commands
+        if (commandHold[i][1].data.permission == "admin" && !Service.session.admin) {
+            skipped += 1
             continue;
         }
-        Service.Utils.Server.send(`[${i+1-skipped}] ${commandHold[i][1].data.name} ${format(commandHold[i][1].data.name)} | ${commandHold[i][1].data.desc}`, Service.io, Service.session.socketID)
+        Service.Utils.Server.send(`[${i + 1 - skipped}] ${commandHold[i][1].data.name} ${format(commandHold[i][1].data.name)} | ${commandHold[i][1].data.desc}`, Service.io, Service.session.socketID)
     }
+    //if no command messages were issued, let them know!
+    if (commands == 0) Service.Utils.Server.send(`No commands on this page!`, Service.io, Service.session.socketID)
+    Service.Utils.Server.send(`-`.repeat(50), Service.io, Service.session.socketID)
+
 }
 exports.data = {
     name: "help",

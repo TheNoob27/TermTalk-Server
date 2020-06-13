@@ -4,7 +4,8 @@ cache.addons = {
 	hardCommands: new Map(),
 	monitor: {
 		connected: 0,
-		started: Date.now()
+		started: Date.now(),
+		askReddit: new Map()
 	},
 	connectors: {
 		loadCmd: require("./functions/loadCommands.js"),
