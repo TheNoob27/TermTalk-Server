@@ -116,6 +116,7 @@ io.on("connect", (socket) => {
 
 			socket.join("authed")
 			Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io)
+			serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
 		})
 	})
 
@@ -174,6 +175,7 @@ io.on("connect", (socket) => {
 			})
 			socket.join("authed")
 			Utils.Server.broadcast(`${username}#${tag} has connected.`, io)
+			serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
 		})
 	})
 
@@ -213,6 +215,9 @@ io.on("connect", (socket) => {
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
 		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
+		if(serverCache.addons.monitor.chatHistory.length > 30) serverCache.addons.monitor.chatHistory.pop()
+		//limit history to last 30 messages
+		serverCache.addons.monitor.chatHistory.unshift(`${data.username}#${data.tag} | ${data.msg}`)
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
 	})
 
