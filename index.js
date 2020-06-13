@@ -73,13 +73,19 @@ io.on("connect", (socket) => {
 			try {
 				memberList = Utils.Server.getMemberList(sessions, User)
 			} catch (e) {
+				socket.emit("methodResult", {
+					success: false,
+					method: "getMemberList",
+					type: "serverError",
+					message: "The server encountered an error. Be sure to contact the admin."
+				})
 				return
 			}
 			socket.emit("methodResult", {
 				success: true,
 				method: "getMemberList",
 				type: "success",
-				message: "Successfully got member list",
+				message: "Successfully received the member list.",
 				memberList
 			})
 		}
