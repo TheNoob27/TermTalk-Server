@@ -33,9 +33,13 @@ class Server {
 
 	static getMemberList(sessions, UserHandle) {
 		return sessions.map(t => UserHandle.getUserByUID(t.uid, (err, user) => {
-			if(err) return ""
+			if (err) return ""
 			return `${user.username}#${user.tag}`
 		})).filter(t => t != "")
+	}
+
+	static userIsConnected(uid, sessions) {
+		return sessions.find(t => t.uid == uid) !== undefined
 	}
 }
 

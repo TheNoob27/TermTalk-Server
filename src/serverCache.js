@@ -4,11 +4,14 @@ cache.addons = {
 	hardCommands: new Map(),
 	monitor: {
 		connected: 0,
-		started: Date.now()
+		started: Date.now(),
+		chatHistory: [],
+		askReddit: new Map()
 	},
 	connectors: {
 		loadCmd: require("./functions/loadCommands.js"),
-		msConvert: require("./functions/secondsConvert.js")
+		msConvert: require("./functions/secondsConvert.js"),
+		sendHistory: require("./functions/loadHistory.js")
 	}
 }
 
