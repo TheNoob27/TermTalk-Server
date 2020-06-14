@@ -4,6 +4,6 @@ exports.run = (Service, Data, args, ) => {
 
 exports.data = {
     name: "uptime",
-    desc: "server uptime",
+    desc: "Server uptime.",
     permission: "normal"
 };
