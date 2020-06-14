@@ -151,6 +151,7 @@ const ci = readline.createInterface({
 })
 
 io.on("connect", (socket) => {
+	socket.removeAllListeners() // Should prevent the reconnect memory leak.
 	if (Object.keys(io.sockets.connected).length > Config.maxSlots) {
 		socket.emit("methodResult", {
 			success: false,
