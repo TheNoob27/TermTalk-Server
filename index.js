@@ -47,8 +47,9 @@ const sessions = [{ "sessionID": Utils.Session.makeSessionID(), "uid": "Server",
 
 // Server
 const serverOptions = Config.secure ? {
-	key: fs.readFileSync(Config.keyFile),
-	cert: fs.readFileSync(Config.certFile)
+	key: fs.readFileSync(Config.keyFile, {encoding: "utf8"}),
+	ca: fs.readFileSync(Config.chainFile, {encoding: "utf8"}),
+	cert: fs.readFileSync(Config.certFile, {encoding: "utf8"})
 } : {}
 const server = Config.secure ? createServer(https, serverOptions) : createServer(http, serverOptions)
 const io = require('socket.io')(server)

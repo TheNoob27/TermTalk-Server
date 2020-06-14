@@ -10,5 +10,6 @@
 		"serverName": "TermTalk Server",
 		"secure": false,
 		"keyFile": "",
+		"chainFile": "",
 		"certFile": ""
 }
