@@ -1,15 +1,15 @@
 {
-    "publicIP": "",
-    "port": "3000",
-    "adminUIDs": [],
-    "maxCharacterLength": 1600,
-    "allowLurking": false,
-    "maxSlots": 20,
-    "saveLoadHistory": true,
-    "publicServer": false,
-		"serverName": "TermTalk Server",
-		"secure": false,
-		"keyFile": "",
-		"chainFile": "",
-		"certFile": ""
+	"publicIP": "",
+	"port": "3000",
+	"adminUIDs": [],
+	"maxCharacterLength": 1600,
+	"allowLurking": false,
+	"maxSlots": 20,
+	"saveLoadHistory": true,
+	"publicServer": false,
+	"serverName": "TermTalk Server",
+	"secure": false,
+	"keyFile": "",
+	"chainFile": "",
+	"certFile": ""
 }
