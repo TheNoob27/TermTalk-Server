@@ -33,6 +33,6 @@ exports.run = (Service, Data, args) => {
 }
 exports.data = {
     name: "help",
-    desc: "shows this page",
+    desc: "Shows this page.",
     permission: "normal"
 };

@@ -18,6 +18,6 @@ exports.run = (Service, Data, args,) => {
 
 exports.data = {
     name: "chatlock",
-    desc: "locks the chat",
+    desc: "Locks the chat.",
     permission: "admin"
 };
