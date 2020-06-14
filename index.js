@@ -24,16 +24,15 @@
 */
 
 // Packages
-const http = require('http').createServer()
-const io = require('socket.io')(http)
+const Database = require('better-sqlite3')
 const fs = require("fs")
 const readline = require("readline")
-const Database = require('better-sqlite3')
+const http = require('http')
 
 // Our files or utils
+const Config = require("./config.json")
 const Utils = require("./src/Utils.js")
 const serverCache = require("./src/serverCache.js")
-const Config = require("./config.json")
 
 // Make database directory
 if (!fs.existsSync(`${__dirname}/Databases`)) fs.mkdirSync(`${__dirname}/Databases`)
@@ -44,6 +43,101 @@ const User = new Utils.UserHandle(UserDB)
 
 // Sessions
 const sessions = [{ "sessionID": Utils.Session.makeSessionID(), "uid": "Server", admin: true }]
+
+// Server
+const server = http.createServer((req, res) => {
+	// if(!Config.publicServer || ["0.0.0.0", "localhost", "127.0.0.1"].includes(Config.publicIP)) return res.writeHead(400) // Was thinking maybe pinging should be all servers so I commented this out
+	if (req.url == "/ping") {
+		let toWrite = JSON.stringify({
+			members: Utils.Server.getMemberList(sessions, User).length,
+			maxMembers: Config.maxSlots,
+			name: Config.serverName,
+			port: Config.port,
+			ip: Config.publicIP
+		})
+		res.writeHead(200, { "Content-Type": "application/json" })
+		res.end(toWrite)
+	}
+})
+const io = require('socket.io')(server)
+
+if (Config.publicServer) {
+	if (["0.0.0.0", "localhost", "127.0.0.1", ""].includes(Config.publicIP)) console.log("Unable to publicly list server because ip is not public.")
+	const options = {
+		hostname: "termtalkservers.is-just-a.dev",
+		port: 7680,
+		path: "/addserver",
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json"
+		}
+	}
+
+	const postData = JSON.stringify({
+		ip: Config.publicIP,
+		port: Config.port
+	})
+
+	const req = http.request(options, res => {
+		const status = res.statusCode
+		let raw = ""
+
+		res.on("data", (chunk) => raw += chunk)
+
+		res.on("end", () => {
+			if (res.statusCode === 200) {
+				let data = JSON.parse(raw)
+
+				Config.key = data.key
+				fs.writeFileSync("./config.json", JSON.stringify(Config, null, 4))
+				console.log("Server added to the server list!")
+			} else {
+				if (raw !== "Server already listed.") return console.log(raw)
+			}
+		})
+	})
+
+	req.write(postData)
+	req.end()
+} else if (Config.key) {
+	if (["0.0.0.0", "localhost", "127.0.0.1", ""].includes(Config.publicIP)) console.log("Unable to remove publicly listed server because ip is not public.")
+	const options = {
+		hostname: "termtalkservers.is-just-a.dev",
+		port: 7680,
+		path: "/removeserver",
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json"
+		}
+	}
+
+	const postData = JSON.stringify({
+		ip: Config.publicIP,
+		port: Config.port,
+		key: Config.key
+	})
+
+	const req = http.request(options, res => {
+		const status = res.statusCode
+		let raw = ""
+
+		res.on("data", (chunk) => raw += chunk)
+
+		res.on("end", () => {
+			if (res.statusCode === 200) {
+				console.log(raw)
+				delete Config.key
+				fs.writeFileSync("./config.json", JSON.stringify(Config, null, 4))
+			} else {
+				if (raw !== "Server not listed.") return console.log(raw)
+			}
+		})
+	})
+
+	req.write(postData)
+	req.end()
+}
+
 
 // Last server message timestamp
 let lastServerMessageTime = null
@@ -57,7 +151,7 @@ const ci = readline.createInterface({
 })
 
 io.on("connect", (socket) => {
-	if(Object.keys(io.sockets.connected).length > Config.maxSlots) {
+	if (Object.keys(io.sockets.connected).length > Config.maxSlots) {
 		socket.emit("methodResult", {
 			success: false,
 			method: "connect",
@@ -67,7 +161,7 @@ io.on("connect", (socket) => {
 		socket.disconnect(true)
 		return;
 	}
-	
+
 	console.log("A user has connected.")
 	socket.emit("methodResult", {
 		success: true,
@@ -171,7 +265,7 @@ io.on("connect", (socket) => {
 
 			socket.join("authed")
 			Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io)
-			if(Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
+			if (Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
 			io.sockets.in("authed").emit("method", {
 				method: "userConnect",
 				user: `${user.username}#${user.tag}`,
@@ -236,7 +330,7 @@ io.on("connect", (socket) => {
 			})
 			socket.join("authed")
 			Utils.Server.broadcast(`${username}#${tag} has connected.`, io)
-			if(Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
+			if (Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
 			io.sockets.in("authed").emit("method", {
 				method: "userConnect",
 				type: "serverRequest",
@@ -265,7 +359,7 @@ io.on("connect", (socket) => {
 			message: "The client did not provide any session ID or a valid one."
 		})
 
-		if([data.uid, data.username, data.tag, data.msg].some(str => typeof str != "string")) return socket.emit("methodResult", {
+		if ([data.uid, data.username, data.tag, data.msg].some(str => typeof str != "string")) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "invalidDataTypes",
@@ -305,7 +399,7 @@ io.on("connect", (socket) => {
 			type: "noMessageContent",
 			message: `The message the client attempted to send had no body.`
 		})
-	
+
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		if (serverCache.addons.chat.locked && !session.admin) return socket.emit("methodResult", {
 			success: false,
@@ -316,9 +410,9 @@ io.on("connect", (socket) => {
 		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
 		//locks the chat except for admins
 		if (serverCache.addons.chat.chatHistory.length > 30 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory.pop()
-		
+
 		//limit history to last 30 messages (all that will fit the screen)
-		if(Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push({username: data.username, tag: data.tag, msg: data.msg.replace("\n", "")})
+		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push({ username: data.username, tag: data.tag, msg: data.msg.replace("\n", "") })
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
 	})
 
@@ -389,7 +483,7 @@ process.on("beforeExit", () => {
 	io.sockets.in("authed").emit("disconnect")
 })
 
-http.listen(Config.port, () => {
+server.listen(Config.port, () => {
 	const userTable = UserDB.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'users';").get()
 	const bannedTable = UserDB.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'banned';").get()
 
@@ -410,4 +504,3 @@ http.listen(Config.port, () => {
 
 	console.log(`Server online on port ${Config.port}.`)
 })
-
