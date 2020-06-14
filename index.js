@@ -319,7 +319,7 @@ io.on("connect", (socket) => {
 		
 		//limit history to last 30 messages (all that will fit the screen)
 		if(Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push({username: data.username, tag: data.tag, msg: data.msg.replace("\n", "")})
-		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
+		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
 	})
 
 	socket.on("disconnecting", () => {
