@@ -153,7 +153,7 @@ io.on("connect", (socket) => {
 			})
 
 			let sessionID = Utils.Session.makeSessionID()
-			sessions.push({ uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id })
+			sessions.push({ uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id, id: user.id })
 
 			socket.emit("authResult", {
 				success: true,
@@ -219,7 +219,7 @@ io.on("connect", (socket) => {
 			}
 
 			let sessionID = Utils.Session.makeSessionID()
-			sessions.push({ uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id })
+			sessions.push({ uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id, id })
 
 			socket.emit("authResult", {
 				success: true,
@@ -319,7 +319,7 @@ io.on("connect", (socket) => {
 		
 		//limit history to last 30 messages (all that will fit the screen)
 		if(Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push({username: data.username, tag: data.tag, msg: data.msg.replace("\n", "")})
-		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid })
+		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
 	})
 
 	socket.on("disconnecting", () => {

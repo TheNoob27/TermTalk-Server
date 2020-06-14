@@ -12,6 +12,6 @@ exports.run = (Service, Data, args,) => {
 }
 exports.data = {
     name: "reload",
-    desc: "reloads commands",
+    desc: "Reloads commands.",
     permission: "admin"
 };
