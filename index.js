@@ -511,7 +511,8 @@ function createServer(protocol, serverOptions){
 				maxMembers: Config.maxSlots,
 				name: Config.serverName,
 				port: Config.port,
-				ip: Config.publicIP
+				ip: Config.publicIP,
+				secure: Config.secure
 			})
 			res.writeHead(200, { "Content-Type": "application/json" })
 			res.end(toWrite)
