@@ -412,7 +412,7 @@ io.on("connect", (socket) => {
 		if (serverCache.addons.chat.chatHistory.length > 30 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory.pop()
 
 		//limit history to last 30 messages (all that will fit the screen)
-		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push({ username: data.username, tag: data.tag, msg: data.msg.replace("\n", "") })
+		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push({ username: data.username, tag: data.tag, msg: getTime() + " " + data.msg.replace("\n", "") })
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
 	})
 
@@ -504,3 +504,7 @@ server.listen(Config.port, () => {
 
 	console.log(`Server online on port ${Config.port}.`)
 })
+
+function getTime() {
+	return `[${new Intl.DateTimeFormat({}, {timeStyle: "short", hour12: true}).format(new Date())}]`
+}
