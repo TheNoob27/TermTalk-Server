@@ -410,9 +410,8 @@ io.on("connect", (socket) => {
 		})
 		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
 		//locks the chat except for admins
-		if (serverCache.addons.chat.chatHistory.length > 30 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory.pop()
+		if (serverCache.addons.chat.chatHistory.length > 100 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory.shift()
 
-		//limit history to last 30 messages (all that will fit the screen)
 		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push({ username: getTime() + " " + data.username, tag: data.tag, msg: data.msg.replace("\n", "") })
 		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
 	})
