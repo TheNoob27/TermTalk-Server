@@ -153,7 +153,7 @@ io.on("connect", (socket) => {
 			})
 
 			let sessionID = Utils.Session.makeSessionID()
-			sessions.push({ uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id })
+			sessions.push({ uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id, id: user.id })
 
 			socket.emit("authResult", {
 				success: true,
@@ -219,7 +219,7 @@ io.on("connect", (socket) => {
 			}
 
 			let sessionID = Utils.Session.makeSessionID()
-			sessions.push({ uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id })
+			sessions.push({ uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id, id })
 
 			socket.emit("authResult", {
 				success: true,
