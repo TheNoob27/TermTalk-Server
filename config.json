@@ -7,5 +7,9 @@
     "maxSlots": 20,
     "saveLoadHistory": true,
     "publicServer": false,
-    "serverName": "TermTalk Server"
+		"serverName": "TermTalk Server",
+		"secure": false,
+		"keyFile": "",
+		"chainFile": "",
+		"certFile": ""
 }

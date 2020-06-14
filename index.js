@@ -27,7 +27,8 @@
 const Database = require('better-sqlite3')
 const fs = require("fs")
 const readline = require("readline")
-const http = require('http')
+const http = require("http")
+const https = require("https")
 
 // Our files or utils
 const Config = require("./config.json")
@@ -45,20 +46,12 @@ const User = new Utils.UserHandle(UserDB)
 const sessions = [{ "sessionID": Utils.Session.makeSessionID(), "uid": "Server", admin: true }]
 
 // Server
-const server = http.createServer((req, res) => {
-	// if(!Config.publicServer || ["0.0.0.0", "localhost", "127.0.0.1"].includes(Config.publicIP)) return res.writeHead(400) // Was thinking maybe pinging should be all servers so I commented this out
-	if (req.url == "/ping") {
-		let toWrite = JSON.stringify({
-			members: Utils.Server.getMemberList(sessions, User).length,
-			maxMembers: Config.maxSlots,
-			name: Config.serverName,
-			port: Config.port,
-			ip: Config.publicIP
-		})
-		res.writeHead(200, { "Content-Type": "application/json" })
-		res.end(toWrite)
-	}
-})
+const serverOptions = Config.secure ? {
+	key: fs.readFileSync(Config.keyFile, {encoding: "utf8"}),
+	ca: fs.readFileSync(Config.chainFile, {encoding: "utf8"}),
+	cert: fs.readFileSync(Config.certFile, {encoding: "utf8"})
+} : {}
+const server = Config.secure ? createServer(https, serverOptions) : createServer(http, serverOptions)
 const io = require('socket.io')(server)
 
 if (Config.publicServer) {
@@ -507,4 +500,21 @@ server.listen(Config.port, () => {
 
 function getTime() {
 	return `[${new Intl.DateTimeFormat({}, {timeStyle: "short", hour12: true}).format(new Date())}]`
+}
+
+function createServer(protocol, serverOptions){
+	return protocol.createServer(serverOptions,(req, res) => {
+		// if(!Config.publicServer || ["0.0.0.0", "localhost", "127.0.0.1"].includes(Config.publicIP)) return res.writeHead(400) // Was thinking maybe pinging should be all servers so I commented this out
+		if (req.url == "/ping") {
+			let toWrite = JSON.stringify({
+				members: Utils.Server.getMemberList(sessions, User).length,
+				maxMembers: Config.maxSlots,
+				name: Config.serverName,
+				port: Config.port,
+				ip: Config.publicIP
+			})
+			res.writeHead(200, { "Content-Type": "application/json" })
+			res.end(toWrite)
+		}
+	})
 }
