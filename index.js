@@ -264,8 +264,8 @@ io.on("connect", (socket) => {
 			})
 
 			socket.join("authed")
-			Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io)
 			if (Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
+			Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io)
 			io.sockets.in("authed").emit("method", {
 				method: "userConnect",
 				user: `${user.username}#${user.tag}`,
