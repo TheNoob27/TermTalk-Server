@@ -76,7 +76,7 @@ if (Config.publicServer) {
 		port: Config.port
 	})
 
-	const req = http.request(options, res => {
+	const req = https.request(options, res => {
 		const status = res.statusCode
 		let raw = ""
 
@@ -114,7 +114,7 @@ if (Config.publicServer) {
 		key: Config.key
 	})
 
-	const req = http.request(options, res => {
+	const req = https.request(options, res => {
 		const status = res.statusCode
 		let raw = ""
 
