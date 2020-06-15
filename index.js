@@ -394,7 +394,7 @@ io.on("connect", (socket) => {
 			message: "Client cannot send messages while lurking."
 		})
 		if (data.uid === "Server") return;
-
+		if(serverCache.addons.connectors.rateLimit(serverCache, io, socket.id, session.channel)) return; // stop if session#channel is ratelimited
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
 		if (data.msg.trim().length > Config.maxCharacterLength) return socket.emit("methodResult", {
 			success: false,
@@ -408,7 +408,7 @@ io.on("connect", (socket) => {
 			type: "noMessageContent",
 			message: `The message the client attempted to send had no body.`
 		})
-
+		
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		if (serverCache.addons.chat.locked[session.channel] && !session.admin) return socket.emit("methodResult", {
 			success: false,
