@@ -43,7 +43,7 @@ const UserDB = new Database('./Databases/TermTalk_Users.db')
 const User = new Utils.UserHandle(UserDB)
 
 // Sessions
-const sessions = [{ "sessionID": Utils.Session.makeSessionID(), "uid": "Server", admin: true }]
+const sessions = [{ channel: "General", sessionID: Utils.Session.makeSessionID(), uid: "Server", admin: true }]
 
 // Server
 const serverOptions = Config.secure ? {
@@ -167,23 +167,38 @@ io.on("connect", (socket) => {
 	socket.emit("getUserData")
 	socket.on("returnUserData", (data) => {
 		if (data) {
+			if(sessions.find(t => t.sessionID == data.sessionID)) return
 			if (User.isBanned(data.uid)) return socket.emit("authResult", {
 				success: false,
 				method: "reconnect",
 				type: "userBanned",
 				message: "You are banned."
 			})
-			socket.join("authed")
-			Utils.Server.broadcast(`${data.username}#${data.tag} has reconnected.`, io)
-			if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })
-			io.sockets.in("authed").emit("method", {
+			if (!data || !["uid", "username", "tag", "sessionID"].every((k) => k in data) || [data.uid, data.username, data.tag].some(str => str === "")) return socket.emit("authResult", {
+				success: false,
+				method: "register",
+				type: "insufficientData",
+				message: "The client did not return any or enough data."
+			})
+			let sessionIndex = serverCache.sessions.findIndex(t => t.sessionID == data.sessionID)
+			if (sessionIndex == -1) return socket.emit("authResult", {
+				success: false,
+				method: "reconnect",
+				type: "sessionExpired",
+				message: "The session id provided was invalid or has expired."
+			})
+			data = serverCache.sessions.splice(sessionIndex, 1)[0]
+			socket.join("General")
+			Utils.Server.broadcast(`${data.username}#${data.tag} has reconnected.`, io, "General")
+			if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ channel: "General", uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })
+			io.sockets.in("General").emit("method", {
 				method: "userConnect",
 				type: "serverRequest",
 				user: `${data.username}#${data.tag}`
 			})
 			let memberList
 			try {
-				memberList = Utils.Server.getMemberList(sessions, User)
+				memberList = Utils.Server.getMemberList(sessions, User, "General")
 			} catch (e) {
 				socket.emit("methodResult", {
 					success: false,
@@ -241,7 +256,7 @@ io.on("connect", (socket) => {
 			})
 
 			let sessionID = Utils.Session.makeSessionID()
-			sessions.push({ uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id, id: user.id })
+			sessions.push({ channel: "General", uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id, id: user.id })
 
 			socket.emit("authResult", {
 				success: true,
@@ -257,10 +272,10 @@ io.on("connect", (socket) => {
 				}
 			})
 
-			socket.join("authed")
-			if (Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
-			Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io)
-			io.sockets.in("authed").emit("method", {
+			socket.join("General")
+			if (Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id, "General")
+			Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io, "General")
+			io.sockets.in("General").emit("method", {
 				method: "userConnect",
 				user: `${user.username}#${user.tag}`,
 				type: "serverRequest"
@@ -307,7 +322,7 @@ io.on("connect", (socket) => {
 			}
 
 			let sessionID = Utils.Session.makeSessionID()
-			sessions.push({ uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id, id })
+			sessions.push({ channel: "General", uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id, id })
 
 			socket.emit("authResult", {
 				success: true,
@@ -322,10 +337,10 @@ io.on("connect", (socket) => {
 					sessionID
 				}
 			})
-			socket.join("authed")
-			Utils.Server.broadcast(`${username}#${tag} has connected.`, io)
-			if (Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id)
-			io.sockets.in("authed").emit("method", {
+			socket.join("General")
+			Utils.Server.broadcast(`${username}#${tag} has connected.`, io, "General")
+			if (Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id, "General")
+			io.sockets.in("General").emit("method", {
 				method: "userConnect",
 				type: "serverRequest",
 				user: `${username}#${tag}`
@@ -336,7 +351,7 @@ io.on("connect", (socket) => {
 	ci.on("line", (input) => {
 		if (lastServerMessageTime == Date.now()) return
 		lastServerMessageTime = Date.now()
-		io.sockets.in("authed").emit("msg", { username: "Server", tag: "0000", msg: input, uid: "Server" })
+		io.sockets.in(sessions[0].channel).emit("msg", { username: "Server", tag: "0000", msg: input, uid: "Server" })
 	})
 
 	socket.on("msg", (data) => {
@@ -350,7 +365,7 @@ io.on("connect", (socket) => {
 			success: false,
 			method: "messageSend",
 			type: "invalidSessionID",
-			message: "The client did not provide any session ID or a valid one."
+			message: "The client did not provide any session ID or a valid one, reconnect."
 		})
 
 		if ([data.uid, data.username, data.tag, data.msg].some(str => typeof str != "string")) return socket.emit("methodResult", {
@@ -395,7 +410,7 @@ io.on("connect", (socket) => {
 		})
 
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
-		if (serverCache.addons.chat.locked && !session.admin) return socket.emit("methodResult", {
+		if (serverCache.addons.chat.locked[session.channel] && !session.admin) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "serverLocked",
@@ -403,10 +418,11 @@ io.on("connect", (socket) => {
 		})
 		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
 		//locks the chat except for admins
-		if (serverCache.addons.chat.chatHistory.length > 100 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory.shift()
+		if(!serverCache.addons.chat.chatHistory[session.channel]) serverCache.addons.chat.chatHistory[session.channel] = []
+		if (serverCache.addons.chat.chatHistory[session.channel].length > 100 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].shift()
 
-		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory.push({ username: getTime() + " " + data.username, tag: data.tag, msg: data.msg.replace("\n", "") })
-		io.sockets.in("authed").emit('msg', { msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
+		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].push({ time: getTime(), username: data.username, channel: session.channel, tag: data.tag, msg: data.msg.replace("\n", "") })
+		io.sockets.in(session.channel).emit('msg', { channel: session.channel, msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
 	})
 
 	socket.on("disconnecting", () => {
@@ -418,12 +434,19 @@ io.on("connect", (socket) => {
 			if (err) return;
 			console.log(`${d.username}#${d.tag} has disconnected.`)
 			if (session) {
-				io.sockets.in("authed").emit("method", {
+				io.sockets.in(session.channel).emit("method", {
 					method: "userDisconnect",
 					type: "serverRequest",
 					user: `${d.username}#${d.tag}`
 				})
-				Utils.Server.broadcast(`${d.username}#${d.tag} has disconnected.`, io)
+				Utils.Server.broadcast(`${d.username}#${d.tag} has disconnected.`, io, session.channel)
+				serverCache.sessions.push(session)
+				setTimeout(() => {
+					let sessionIndex = serverCache.sessions.findIndex(t => t.socketID == socket.id)
+					if (sessionIndex != -1){
+						sessions.splice(sessionIndex, 1)
+					}
+				}, 1000 * 60 * 5)
 			}
 		})
 	})
@@ -442,12 +465,12 @@ io.on("connect", (socket) => {
 			success: false,
 			method: data.method,
 			type: "invalidSessionID",
-			message: "The client did not provide any session ID or a valid one."
+			message: "The client did not provide any session ID or a valid one, reconnect."
 		})
 		if (data.method == "getMemberList") {
 			let memberList;
 			try {
-				memberList = Utils.Server.getMemberList(sessions, User)
+				memberList = Utils.Server.getMemberList(sessions, User, data.channel)
 			} catch (e) {
 				socket.emit("methodResult", {
 					success: false,
@@ -464,6 +487,14 @@ io.on("connect", (socket) => {
 				message: "Successfully received the member list.",
 				memberList
 			})
+		}else if(data.method == "getChannelList"){
+			socket.emit("methodResult", {
+				success: true,
+				method: data.method,
+				type: "success",
+				message: "Successfully received the channel list.",
+				channelList: Config.channels
+			})
 		}
 	})
 })
@@ -473,7 +504,7 @@ ci.on("SIGINT", () => {
 })
 
 process.on("beforeExit", () => {
-	io.sockets.in("authed").emit("disconnect")
+	io.emit("disconnect")
 })
 
 server.listen(Config.port, () => {

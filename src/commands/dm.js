@@ -15,6 +15,6 @@ exports.run = (Service, Data, args) => {
 }
 exports.data = {
     name: "dm",
-    desc: "sends a msg to a user",
+    desc: "Sends a private message to a user.",
     permission: "normal"
 };

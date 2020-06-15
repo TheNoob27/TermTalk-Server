@@ -15,7 +15,7 @@ exports.run = (Service, Data, args) => {
     } catch (e) {
       return
     }
-    Service.io.sockets.in("authed").emit("methodResult", {
+    Service.io.sockets.in(Service.session.channel).emit("methodResult", {
       success: true,
       method: "getMemberList",
       type: "success",
@@ -26,5 +26,5 @@ exports.run = (Service, Data, args) => {
 exports.data = {
   name: "lurk",
   desc: "Starts lurking.",
-  permission: "all"
+  permission: "normal"
 };
