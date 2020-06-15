@@ -3,8 +3,8 @@ cache.addons = {
 	textCommands: new Map(),
 	hardCommands: new Map(),
 	chat: {
-		chatHistory: [],
-		locked: false
+		chatHistory: {},
+		locked: {}
 	},
 	monitor: {
 		connected: 0,
@@ -16,5 +16,7 @@ cache.addons = {
 		sendHistory: require("./functions/loadHistory.js")
 	}
 }
+
+cache.sessions = []
 
 module.exports = cache;

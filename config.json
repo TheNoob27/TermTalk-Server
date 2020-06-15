@@ -6,6 +6,7 @@
 	"allowLurking": false,
 	"maxSlots": 20,
 	"saveLoadHistory": true,
+	"channels": [],
 	"publicServer": false,
 	"serverName": "TermTalk Server",
 	"secure": false,

@@ -57,7 +57,7 @@ class Session {
 				Service.User.getUserByUID(uid, (err, data) => {
 					if(err) return true
 
-					Service.server.broadcast(`${data.username}#${data.tag} has been banned.`)
+					Service.server.broadcast(`${data.username}#${data.tag} has been banned.`, Service.io)
 					socket.disconnect(true)
 					return true
 				})
