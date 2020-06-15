@@ -8,6 +8,8 @@ To have a public server appear in the server list, you must set the config varia
 
 You can also give your server a name by changing the `"serverName"` variable to whatever you want. If your server name is hateful, or your server is found to break any applicale laws, it will be removed as soon as found.
 
+Public servers **may not** disable pinging. All servers that do not receive a successful ping from the server will not be listed. This is a dynamic function, so your server can pop in an out of the list as it comes online and goes offline (Abusing this will get you ip banned from listing servers).
+
 # IMPORTANT NOTICES
 
 When you make a public server, the server list will return a `key` on successful add. **You must save this if you want to remove your server from the list** (the unmodifed server does this for you).
