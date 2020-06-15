@@ -421,7 +421,7 @@ io.on("connect", (socket) => {
 		if(!serverCache.addons.chat.chatHistory[session.channel]) serverCache.addons.chat.chatHistory[session.channel] = []
 		if (serverCache.addons.chat.chatHistory[session.channel].length > 100 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].shift()
 
-		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].push({ time: getTime(), username: data.username, channel: session.channel, tag: data.tag, msg: data.msg.replace("\n", "") })
+		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].push({ timestamp: Date.now(), username: data.username, channel: session.channel, tag: data.tag, msg: data.msg.replace("\n", "") })
 		io.sockets.in(session.channel).emit('msg', { channel: session.channel, msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
 	})
 
@@ -529,9 +529,10 @@ server.listen(Config.port, () => {
 	console.log(`Server online on port ${Config.port}.`)
 })
 
-function getTime() {
-	return `[${new Intl.DateTimeFormat({}, {timeStyle: "short", hour12: true}).format(new Date())}]`
-}
+// Making this client side to prevent localiztion stuff
+// function getTime(timestamp) {
+// 	return `[${new Intl.DateTimeFormat({}, {timeStyle: "short", hour12: true}).format(new Date(timestamp))}]`
+// }
 
 function createServer(protocol, serverOptions){
 	return protocol.createServer(serverOptions,(req, res) => {
