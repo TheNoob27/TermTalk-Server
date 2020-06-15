@@ -29,12 +29,14 @@ class Server {
 		return io.sockets.connected[socketID].emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
 	}
 
-	static broadcast(msg, io) {
-		return io.sockets.in("authed").emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
+	static broadcast(msg, io, channel) {
+		if(!channel) return io.emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
+		return io.sockets.in(channel).emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
 	}
 
-	static getMemberList(sessions, UserHandle) {
+	static getMemberList(sessions, UserHandle, channel) {
 		let clonedSessions = JSON.parse(JSON.stringify(sessions))
+		if(channel) clonedSessions = clonedSessions.filter(t => t.channel == channel)
 		let length = clonedSessions.length
 		if(Config.allowLurking) clonedSessions = clonedSessions.filter(t => !t.lurking)
 		let lurkers = length - clonedSessions.length
