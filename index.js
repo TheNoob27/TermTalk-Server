@@ -514,8 +514,6 @@ server.listen(Config.port, () => {
 	if (!userTable["count(*)"]) {
 		UserDB.prepare("CREATE TABLE users (id INTEGER PRIMARY KEY, uid TEXT, username TEXT, tag TEXT, passwordHash TEXT);").run();
 		UserDB.prepare("CREATE UNIQUE INDEX idx_user_id ON users (id);").run()
-		UserDB.prepare("CREATE TABLE banned(uid TEXT PRIMARY KEY);").run();
-		UserDB.prepare("CREATE UNIQUE INDEX idx_uid ON banned (uid);").run()
 		UserDB.pragma("synchronous = 1")
 		UserDB.pragma("journal_mode = wal")
 		console.log("Created SQLite DB and Users table.")
