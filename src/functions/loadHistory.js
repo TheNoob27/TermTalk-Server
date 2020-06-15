@@ -1,8 +1,8 @@
-function loadHistory(cache, io, socketID) {
+function loadHistory(cache, io, socketID, channel) {
     io.sockets.connected[socketID].emit('method', {
         type: "serverRequest",
         method: "sendChatHistory",
-        history: cache.addons.chat.chatHistory
+        history: cache.addons.chat.chatHistory[channel] || []
     })
 }
 

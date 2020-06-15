@@ -7,14 +7,14 @@ exports.run = (Service, Data, args) => {
             let userSession = Service.sessions.find(e => e.uid == recipient.uid)
             if(userSession.socketID == Service.session.socketID) return Service.Utils.Server.send(`You can't DM yourself.`, Service.io, Service.session.socketID) //dont let people dm themselves
             let content = args.join(" ").split(args[1]), msg = content.pop().replace(" ", "") //clears extra space on pop
-            Service.io.sockets.connected[Service.session.socketID].emit("msg", { username: `[DM] ${sender.username}`, tag: `${sender.tag}`, msg, uid: Service.session.uid, server: false })
-            Service.io.sockets.connected[userSession.socketID].emit("msg", { username: `[DM] ${sender.username}`, tag: `${sender.tag}`, msg, uid: Service.session.uid, server: false })
+            Service.io.sockets.connected[Service.session.socketID].emit("msg", { channel: "DM", username: sender.username, tag: `${sender.tag}`, msg, uid: Service.session.uid, server: false })
+            Service.io.sockets.connected[userSession.socketID].emit("msg", { channel: "DM", username: sender.username, tag: `${sender.tag}`, msg, uid: Service.session.uid, server: false })
         })
     })
 
 }
 exports.data = {
     name: "dm",
-    desc: "sends a msg to a user",
+    desc: "Sends a private message to a user.",
     permission: "normal"
 };
