@@ -63,7 +63,7 @@ const io = require('socket.io')(server)
 if (Config.publicServer) {
 	if (["0.0.0.0", "localhost", "127.0.0.1", ""].includes(Config.publicIP)) console.log("Unable to publicly list server because ip is not public.")
 	const options = {
-		hostname: "termtalkservers.is-just-a.dev",
+		hostname: "servers.termtalk.app",
 		path: "/addserver",
 		method: "POST",
 		headers: {
@@ -100,7 +100,7 @@ if (Config.publicServer) {
 } else if (Config.key) {
 	if (["0.0.0.0", "localhost", "127.0.0.1", ""].includes(Config.publicIP)) console.log("Unable to remove publicly listed server because ip is not public.")
 	const options = {
-		hostname: "termtalkservers.is-just-a.dev",
+		hostname: "servers.termtalk.app",
 		path: "/removeserver",
 		method: "POST",
 		headers: {
