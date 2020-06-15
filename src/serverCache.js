@@ -4,7 +4,8 @@ cache.addons = {
 	hardCommands: new Map(),
 	chat: {
 		chatHistory: {},
-		locked: {}
+		locked: {},
+		rateLimits: new Map()
 	},
 	monitor: {
 		connected: 0,
@@ -13,7 +14,8 @@ cache.addons = {
 	connectors: {
 		loadCmd: require("./functions/loadCommands.js"),
 		msConvert: require("./functions/secondsConvert.js"),
-		sendHistory: require("./functions/loadHistory.js")
+		sendHistory: require("./functions/loadHistory.js"),
+		rateLimit: require("./functions/ratelimit.js")
 	}
 }
 
