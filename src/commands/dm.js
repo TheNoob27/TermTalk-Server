@@ -11,7 +11,6 @@ exports.run = (Service, Data, args) => {
             Service.io.sockets.connected[userSession.socketID].emit("msg", { channel: "DM", username: sender.username, tag: `${sender.tag}`, msg, uid: Service.session.uid, server: false })
         })
     })
-
 }
 exports.data = {
     name: "dm",

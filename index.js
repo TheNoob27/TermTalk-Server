@@ -42,14 +42,20 @@ if (!fs.existsSync(`${__dirname}/Databases`)) fs.mkdirSync(`${__dirname}/Databas
 const UserDB = new Database('./Databases/TermTalk_Users.db')
 const User = new Utils.UserHandle(UserDB)
 
+// Session setup
+Utils.Session.Database = UserDB
+setInterval(() => {
+	Utils.Session.removeOldSessionsFromDatabase()
+}, 1000 * 60 * 5)
+
 // Sessions
 const sessions = [{ channel: "General", sessionID: Utils.Session.makeSessionID(), uid: "Server", admin: true }]
 
 // Server
 const serverOptions = Config.secure ? {
-	key: fs.readFileSync(Config.keyFile, {encoding: "utf8"}),
-	ca: fs.readFileSync(Config.chainFile, {encoding: "utf8"}),
-	cert: fs.readFileSync(Config.certFile, {encoding: "utf8"})
+	key: fs.readFileSync(Config.keyFile, { encoding: "utf8" }),
+	ca: fs.readFileSync(Config.chainFile, { encoding: "utf8" }),
+	cert: fs.readFileSync(Config.certFile, { encoding: "utf8" })
 } : {}
 const server = Config.secure ? createServer(https, serverOptions) : createServer(http, serverOptions)
 const io = require('socket.io')(server)
@@ -167,7 +173,7 @@ io.on("connect", (socket) => {
 	socket.emit("getUserData")
 	socket.on("returnUserData", (data) => {
 		if (data) {
-			if(sessions.find(t => t.sessionID == data.sessionID)) return
+			if (sessions.find(t => t.sessionID == data.sessionID)) return
 			if (User.isBanned(data.uid)) return socket.emit("authResult", {
 				success: false,
 				method: "reconnect",
@@ -181,39 +187,58 @@ io.on("connect", (socket) => {
 				message: "The client did not return any or enough data."
 			})
 			let sessionIndex = serverCache.sessions.findIndex(t => t.sessionID == data.sessionID)
-			if (sessionIndex == -1) return socket.emit("authResult", {
+			if (sessionIndex == -1 && !Utils.Session.sessionInDatabase(data.sessionID)) return socket.emit("authResult", {
 				success: false,
 				method: "reconnect",
 				type: "sessionExpired",
 				message: "The session id provided was invalid or has expired."
 			})
-			data = serverCache.sessions.splice(sessionIndex, 1)[0]
+			serverCache.sessions.splice(sessionIndex, 1)[0]
 			socket.join("General")
-			Utils.Server.broadcast(`${data.username}#${data.tag} has reconnected.`, io, "General")
-			if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ channel: "General", uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })
-			io.sockets.in("General").emit("method", {
-				method: "userConnect",
-				type: "serverRequest",
-				user: `${data.username}#${data.tag}`
-			})
-			let memberList
-			try {
-				memberList = Utils.Server.getMemberList(sessions, User, "General")
-			} catch (e) {
-				socket.emit("methodResult", {
-					success: false,
-					method: "getMemberList",
-					type: "serverError",
-					message: "The server encountered an error. Be sure to contact the admin."
+			User.getUserByUID(data.uid, (err, user) => {
+				if (err) {
+					if (err.type === "userNotExists") {
+						socket.emit("methodResult", {
+							success: false,
+							method: "reconnect",
+							...err
+						})
+					} else {
+						socket.emit("methodResult", {
+							success: false,
+							method: "reconnect",
+							type: "serverError",
+							message: "The server encountered an error. Be sure to contact the admin."
+						})
+						console.log(err)
+					}
+				}
+				Utils.Server.broadcast(`${user.username}#${user.tag} has reconnected.`, io, "General")
+				if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ channel: "General", uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })
+				io.sockets.in("General").emit("method", {
+					method: "userConnect",
+					type: "serverRequest",
+					user: `${data.username}#${data.tag}`
 				})
-				return
-			}
-			socket.emit("methodResult", {
-				success: true,
-				method: "getMemberList",
-				type: "success",
-				message: "Successfully received the member list.",
-				memberList
+				let memberList
+				try {
+					memberList = Utils.Server.getMemberList(sessions, User, "General")
+				} catch (e) {
+					socket.emit("methodResult", {
+						success: false,
+						method: "getMemberList",
+						type: "serverError",
+						message: "The server encountered an error. Be sure to contact the admin."
+					})
+					return
+				}
+				socket.emit("methodResult", {
+					success: true,
+					method: "getMemberList",
+					type: "success",
+					message: "Successfully received the member list.",
+					memberList
+				})
 			})
 		}
 	})
@@ -418,10 +443,10 @@ io.on("connect", (socket) => {
 		})
 		console.log(`${data.username}#${data.tag} ➤ ${data.msg}`)
 		//locks the chat except for admins
-		if(!serverCache.addons.chat.chatHistory[session.channel]) serverCache.addons.chat.chatHistory[session.channel] = []
+		if (!serverCache.addons.chat.chatHistory[session.channel]) serverCache.addons.chat.chatHistory[session.channel] = []
 		if (serverCache.addons.chat.chatHistory[session.channel].length > 100 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].shift()
 
-		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].push({ time: getTime(), username: data.username, channel: session.channel, tag: data.tag, msg: data.msg.replace("\n", "") })
+		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].push({ timestamp: Date.now(), username: data.username, channel: session.channel, tag: data.tag, msg: data.msg.replace("\n", "") })
 		io.sockets.in(session.channel).emit('msg', { channel: session.channel, msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
 	})
 
@@ -439,12 +464,13 @@ io.on("connect", (socket) => {
 					type: "serverRequest",
 					user: `${d.username}#${d.tag}`
 				})
-				Utils.Server.broadcast(`${d.username}#${d.tag} has disconnected.`, io, session.channel)
+				Utils.Server.broadcast(`${d.username}#${d.tag} has disconnected.`, io)
 				serverCache.sessions.push(session)
+				Utils.Session.addSessionToDatabase(session)
 				setTimeout(() => {
 					let sessionIndex = serverCache.sessions.findIndex(t => t.socketID == socket.id)
-					if (sessionIndex != -1){
-						sessions.splice(sessionIndex, 1)
+					if (sessionIndex != -1) {
+						serverCache.sessions.splice(sessionIndex, 1)
 					}
 				}, 1000 * 60 * 5)
 			}
@@ -487,7 +513,7 @@ io.on("connect", (socket) => {
 				message: "Successfully received the member list.",
 				memberList
 			})
-		}else if(data.method == "getChannelList"){
+		} else if (data.method == "getChannelList") {
 			socket.emit("methodResult", {
 				success: true,
 				method: data.method,
@@ -500,16 +526,16 @@ io.on("connect", (socket) => {
 })
 
 ci.on("SIGINT", () => {
+	for(let i = 1; i < sessions.length; i++){
+		Utils.Session.addSessionToDatabase(sessions[i])
+	}
 	process.exit(0)
-})
-
-process.on("beforeExit", () => {
-	io.emit("disconnect")
 })
 
 server.listen(Config.port, () => {
 	const userTable = UserDB.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'users';").get()
 	const bannedTable = UserDB.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'banned';").get()
+	const oldSessionsTable = UserDB.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name = 'oldSessions';").get()
 
 	if (!userTable["count(*)"]) {
 		UserDB.prepare("CREATE TABLE users (id INTEGER PRIMARY KEY, uid TEXT, username TEXT, tag TEXT, passwordHash TEXT);").run();
@@ -518,21 +544,29 @@ server.listen(Config.port, () => {
 		UserDB.pragma("journal_mode = wal")
 		console.log("Created SQLite DB and Users table.")
 	}
+
 	if (!bannedTable["count(*)"]) {
 		UserDB.prepare("CREATE TABLE banned(uid TEXT PRIMARY KEY);").run();
 		UserDB.prepare("CREATE UNIQUE INDEX idx_uid ON banned (uid);").run()
 		console.log("Created Banned Users table.")
 	}
 
+	if (!oldSessionsTable["count(*)"]) {
+		UserDB.prepare("CREATE TABLE oldSessions (sessionID TEXT PRIMARY KEY, uid TEXT, expireTime TEXT);").run();
+		UserDB.prepare("CREATE UNIQUE INDEX idx_session_id ON oldSessions (sessionID);").run()
+		console.log("Created Old Sessions table.")
+	}
+
 	console.log(`Server online on port ${Config.port}.`)
 })
 
-function getTime() {
-	return `[${new Intl.DateTimeFormat({}, {timeStyle: "short", hour12: true}).format(new Date())}]`
-}
+// Making this client side to prevent localiztion stuff
+// function getTime(timestamp) {
+// 	return `[${new Intl.DateTimeFormat({}, {timeStyle: "short", hour12: true}).format(new Date(timestamp))}]`
+// }
 
-function createServer(protocol, serverOptions){
-	return protocol.createServer(serverOptions,(req, res) => {
+function createServer(protocol, serverOptions) {
+	return protocol.createServer(serverOptions, (req, res) => {
 		// if(!Config.publicServer || ["0.0.0.0", "localhost", "127.0.0.1"].includes(Config.publicIP)) return res.writeHead(400) // Was thinking maybe pinging should be all servers so I commented this out
 		if (req.url == "/ping") {
 			let toWrite = JSON.stringify({

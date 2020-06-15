@@ -24,21 +24,22 @@
 
 const crypto = require("crypto")
 
-class Session { 
+class Session {
+	static Database = null
 
 	static makeSessionID() {
 		return crypto.randomBytes(10).toString("hex")
 	}
-  
+
 	static sanitizeInputTags(text) {
-		return text.replace(/[{}]/g, function(ch) {
+		return text.replace(/[{}]/g, function (ch) {
 			return ch === '{' ? '{open}' : '{/close}'
 		})
 	}
-	
+
 	static kick(id, sockets) {
 		let socket = sockets.connected[id]
-		if(socket) {
+		if (socket) {
 			socket.emit("msg", { username: "Server", tag: "0000", msg: "You've been kicked.", uid: "Server" })
 			socket.disconnect(true)
 			return true
@@ -48,14 +49,14 @@ class Session {
 	}
 
 	static ban(uid, Service, socketID) {
-		if(Service.session.admin) return false
+		if (Service.session.admin) return false
 		let socket = Service.io.sockets.connected[socketID]
-		if(socket) {
+		if (socket) {
 			Service.User.ban(uid, (err) => {
-				if(err) return false
+				if (err) return false
 
 				Service.User.getUserByUID(uid, (err, data) => {
-					if(err) return true
+					if (err) return true
 
 					Service.server.broadcast(`${data.username}#${data.tag} has been banned.`, Service.io)
 					socket.disconnect(true)
@@ -65,6 +66,31 @@ class Session {
 		} else {
 			return false
 		}
+	}
+
+	static sessionInDatabase(sessionID){
+		const session = this.Database.prepare("SELECT * FROM oldSessions WHERE sessionID=?;").get(sessionID)
+		if (!session) return false
+		this.removeSessionFromDatabase(sessionID)
+		return true
+	}
+
+	static addSessionToDatabase(session) {
+		const possibleSession = this.Database.prepare("SELECT * FROM oldSessions WHERE sessionID=?;").get(session.sessionID)
+		if (possibleSession) return false
+		this.Database.prepare("INSERT INTO oldSessions (sessionID, uid, expireTime) VALUES (?, ?, ?);").run(session.sessionID, session.uid, (Date.now() + 300000).toString())
+		return true
+	}
+
+	static removeSessionFromDatabase(sessionID) {
+		const session = this.Database.prepare("SELECT * FROM oldSessions WHERE sessionID=?;").get(sessionID)
+		if (!session) return false
+		this.Database.prepare("DELETE FROM oldSessions WHERE sessionID>=?;").run(sessionID)
+		return true
+	}
+
+	static removeOldSessionsFromDatabase() {
+		this.Database.prepare("DELETE FROM oldSessions WHERE expireTime>=?;").run(Date.now())
 	}
 }
 
