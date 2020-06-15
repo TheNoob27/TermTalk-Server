@@ -439,7 +439,7 @@ io.on("connect", (socket) => {
 					type: "serverRequest",
 					user: `${d.username}#${d.tag}`
 				})
-				Utils.Server.broadcast(`${d.username}#${d.tag} has disconnected.`, io, session.channel)
+				Utils.Server.broadcast(`${d.username}#${d.tag} has disconnected.`, io)
 				serverCache.sessions.push(session)
 				setTimeout(() => {
 					let sessionIndex = serverCache.sessions.findIndex(t => t.socketID == socket.id)
