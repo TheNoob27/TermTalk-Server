@@ -575,7 +575,7 @@ function createServer(protocol, serverOptions) {
 				ip: Config.publicIP,
 				secure: Config.secure
 			})
-			res.writeHead(200, { "Content-Type": "application/json" })
+			res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "https://termtalk.app" })
 			res.end(toWrite)
 		}
 	})
