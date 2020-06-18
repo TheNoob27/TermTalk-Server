@@ -1,5 +1,9 @@
 const config = require("../config.json")
 const url = require("url") // Built in node url
+const FlakeId = require('flakeid')
+const flake = new FlakeId({
+	timeOffset: (2020 - 1970) * 31536000 * 1000 + (31536000 * 400)
+})
 
 class API {
   static handleGET(req, res, Service) {
@@ -245,7 +249,7 @@ function handleMessageSend(req, res, Service) {
         return res.end(toWrite)
       }
 
-      if (!body || !["id", "uid", "username", "tag", "msg"].every((k) => k in body) || [body.id, body.uid, body.username, body.tag, body.msg].some(str => str === "")) {
+      if (!body || !["userID", "uid", "username", "tag", "msg"].every((k) => k in body) || [body.id, body.uid, body.username, body.tag, body.msg].some(str => str === "")) {
         let toWrite = JSON.stringify({
           method: "messageSend",
           type: "insufficientData",
@@ -281,7 +285,8 @@ function handleMessageSend(req, res, Service) {
         return res.end(toWrite)
       }
       if (!body.channel) body.channel = paths[1]
-      Service.io.sockets.in(paths[1]).emit("msg", body)
+      let id = flake.gen()
+      Service.io.sockets.in(paths[1]).emit("msg", {id, ...body})
       let toWrite = JSON.stringify({
         code: 200,
         message: body,
