@@ -259,6 +259,7 @@ io.on("connect", (socket) => {
 					memberList
 				})
 			})
+			socket.removeAllListeners()
 		}
 	})
 	socket.on("login", (d) => {
