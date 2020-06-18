@@ -62,25 +62,40 @@ class UserHandle {
 			type: "ownerNotExists",
 			message: "The user data provided was incorrect."
 		})
-		if (uid === "Server") return callback({
-			type: "invalidUID",
-			message: "The UID provided is not allowed to be used."
-		})
-		if (username == "Server") return callback({
-			type: "invalidUsername",
-			message: "The username provided is not allowed to be used."
-		})
-		const exists = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
-		if (exists) return callback({
-			type: "userExists",
-			message: "A user with this UID or username/tag combo already exists."
-		})
-		const id = flake.gen()
-		this._generateToken(id, (err, token, hash) => {
-			if (err) return callback(err)
+		bcrypt.compare(user.password, ownerExists.passwordHash, (err, matched) => {
+			if(err) return callback(err)
+			if(!matched) return callback({
+				type: "ownerCredentialsIncorrect",
+				message: "The owner credentials provided were incorrect.",
+				code: 401
+			})
 
-			this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash, bot, crypt) VALUES (?, ?, ?, ?, ?, ?, ?);").run(id, uid, username, tag, token, 1, hash)
-			return callback(null, token)
+			if (uid === "Server") return callback({
+				type: "invalidUID",
+				message: "The UID provided is not allowed to be used.",
+				code: 400
+			})
+
+			if (username == "Server") return callback({
+				type: "invalidUsername",
+				message: "The username provided is not allowed to be used.",
+				code: 400
+			})
+
+			const exists = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
+			if (exists) return callback({
+				type: "userExists",
+				message: "A user with this UID or username/tag combo already exists.",
+				code: 400
+			})
+
+			const id = flake.gen()
+			this._generateToken(id, (err, token, hash) => {
+				if (err) return callback(err)
+	
+				this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash, bot, crypt) VALUES (?, ?, ?, ?, ?, ?, ?);").run(id, uid, username, tag, token, 1, hash)
+				return callback(null, token)
+			})
 		})
 	}
 
