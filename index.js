@@ -188,7 +188,7 @@ io.on("connect", (socket) => {
 			})
 			if (!data || !["uid", "username", "tag", "sessionID", "id"].every((k) => k in data) || [data.uid, data.username, data.tag, data.id].some(str => str === "")) return socket.emit("authResult", {
 				success: false,
-				method: "register",
+				method: "reconnect",
 				type: "insufficientData",
 				message: "The client did not return any or enough data."
 			})
