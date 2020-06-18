@@ -284,7 +284,7 @@ function handleMessageSend(req, res, Service) {
       Service.io.sockets.in(paths[1]).emit("msg", body)
       let toWrite = JSON.stringify({
         code: 200,
-        message: "Sent.",
+        message: body,
         type: "success",
         method: "messageSend",
         success: true
