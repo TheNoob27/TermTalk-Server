@@ -491,7 +491,7 @@ io.on("connect", (socket) => {
 	})
 
 	socket.on("msg", (data) => {
-		if (!data || !["userID", "uid", "username", "tag", "msg"].every((k) => k in data) || [data.userID, data.uid, data.username, data.tag, data.msg].some(str => str === "")) return socket.emit("methodResult", {
+		if (!data || !["id", "uid", "username", "tag", "msg"].every((k) => k in data) || [data.id, data.uid, data.username, data.tag, data.msg].some(str => str === "")) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "insufficientData",
