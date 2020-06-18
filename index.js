@@ -712,7 +712,7 @@ server.listen(Config.port, () => {
 		UserDB.prepare("ALTER TABLE users ADD COLUMN bot BIT;").run()
 		setTimeout(() => {
 			UserDB.prepare("UPDATE users SET bot=0;").run()
-		}, 500)
+		}, 1500)
 	}
 
 	let cryptColumn = UserDB.prepare("SELECT COUNT(*) AS CNTREC FROM pragma_table_info('users') WHERE name='crypt'").get().CNTREC
@@ -720,7 +720,15 @@ server.listen(Config.port, () => {
 		UserDB.prepare("ALTER TABLE users ADD COLUMN crypt TEXT;").run()
 		setTimeout(() => {
 			UserDB.prepare("UPDATE users SET crypt=\"\";").run()
-		}, 500)
+		}, 1500)
+	}
+
+	let ownerColumn = UserDB.prepare("SELECT COUNT(*) AS CNTREC FROM pragma_table_info('users') WHERE name='owner'").get().CNTREC
+	if (ownerColumn == 0) {
+		UserDB.prepare("ALTER TABLE users ADD COLUMN owner TEXT;").run()
+		setTimeout(() => {
+			UserDB.prepare("UPDATE users SET owner=\"\";").run()
+		}, 1500)
 	}
 
 	console.log(`Server online on port ${Config.port}.`)

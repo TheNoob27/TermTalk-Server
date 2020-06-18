@@ -62,6 +62,8 @@ class API {
   }
 
   static handlePOST(req, res, Service) {
+    let paths = req.url.slice(1).split("/")
+    if(paths[0] == "bots") return handleBot(req, res, Service)
     if (!req.headers.authorization || !req.headers.authorization.startsWith("Bot ")) {
       let toWrite = JSON.stringify({
         method: "botValidate",
@@ -107,11 +109,8 @@ class API {
         res.writeHead(401, { "Content-Type": "application/json" })
         return res.end(toWrite)
       }
-      let paths = req.url.slice(1).split("/")
       if (paths[0] == "channels") {
         handleMessageSend(req, res, Service)
-      } else if (paths[0] == "bot") {
-        handleBot(req, res, Service)
       }
     })
   }
@@ -182,8 +181,6 @@ function getMemberList(req, res, Service) {
     return res.end(toWrite)
   }
 
-  console.log(query.channel)
-  console.log(config.channels)
   if(query.channel && !config.channels.includes(query.channel)){
     let toWrite = JSON.stringify({
       method: "getMemberList",
