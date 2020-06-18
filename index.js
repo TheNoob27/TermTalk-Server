@@ -229,7 +229,9 @@ io.on("connect", (socket) => {
 							username: data.username,
 							tag: data.tag,
 							id: data.id,
-							uid: data.uid
+							uid: data.uid,
+							bot: User.isBot(data.uid),
+							admin: Config.adminUIDs.includes(data.uid)
 						}
 					})
 				}
@@ -326,7 +328,9 @@ io.on("connect", (socket) => {
 							username: user.username,
 							tag: user.tag,
 							id: user.id,
-							uid: user.uid
+							uid: user.uid,
+							bot: false,
+							admin: Config.adminUIDs.includes(user.uid)
 						}
 					})
 				}
@@ -392,7 +396,9 @@ io.on("connect", (socket) => {
 							username: bot.username,
 							tag: bot.tag,
 							id: bot.id,
-							uid: bot.uid
+							uid: bot.uid,
+							bot: true,
+							admin: Config.adminUIDs.includes(bot.uid)
 						}
 					})
 				}
@@ -469,7 +475,9 @@ io.on("connect", (socket) => {
 						username,
 						tag,
 						id,
-						uid
+						uid,
+						bot: false,
+						admin: Config.adminUIDs.includes(uid)
 					}
 				})
 			}
@@ -592,7 +600,9 @@ io.on("connect", (socket) => {
 							username: d.username,
 							tag: d.tag,
 							id: d.id,
-							uid: d.uid
+							uid: d.uid,
+							bot: session.bot,
+							admin: session.admin
 						}
 					})
 				}

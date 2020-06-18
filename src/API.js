@@ -160,7 +160,7 @@ function getMemberList(req, res, Service) {
       code: 400,
       message: "Expected url form encoded input.",
       type: "badInput",
-      method: "getChannelList",
+      method: "getMemberList",
       success: false
     })
     res.writeHead(400, { "Content-Type": "application/json" })
@@ -168,13 +168,27 @@ function getMemberList(req, res, Service) {
   }
   if (!query.sessionID || !Service.sessions.find(t => t.sessionID == query.sessionID)) {
     let toWrite = JSON.stringify({
-      method: "messageSend",
+      method: "getMemberList",
       type: "invalidSessionID",
       message: "No valid session ID provided.",
       code: 401,
       success: false
     })
     res.writeHead(401, { "Content-Type": "application/json" })
+    return res.end(toWrite)
+  }
+
+  console.log(query.channel)
+  console.log(config.channels)
+  if(query.channel && !config.channels.includes(query.channel)){
+    let toWrite = JSON.stringify({
+      method: "getMemberList",
+      type: "channelNotFound",
+      message: "The channel provded does not exist.",
+      code: 404,
+      success: false
+    })
+    res.writeHead(404, { "Content-Type": "application/json" })
     return res.end(toWrite)
   }
 
