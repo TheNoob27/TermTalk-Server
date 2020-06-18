@@ -249,7 +249,7 @@ function handleMessageSend(req, res, Service) {
         return res.end(toWrite)
       }
 
-      if (!body || !["userID", "uid", "username", "tag", "msg"].every((k) => k in body) || [body.id, body.uid, body.username, body.tag, body.msg].some(str => str === "")) {
+      if (!body || !["id", "uid", "username", "tag", "msg"].every((k) => k in body) || [body.id, body.uid, body.username, body.tag, body.msg].some(str => str === "")) {
         let toWrite = JSON.stringify({
           method: "messageSend",
           type: "insufficientData",
@@ -286,7 +286,9 @@ function handleMessageSend(req, res, Service) {
       }
       if (!body.channel) body.channel = paths[1]
       let id = flake.gen()
-      Service.io.sockets.in(paths[1]).emit("msg", {id, ...body})
+      let userID = body.id
+      delete body.id
+      Service.io.sockets.in(paths[1]).emit("msg", {id, userID, ...body})
       let toWrite = JSON.stringify({
         code: 200,
         message: body,
