@@ -36,7 +36,7 @@ class Server {
 
 	static getMemberList(sessions, UserHandle, channel) {
 		let clonedSessions = JSON.parse(JSON.stringify(sessions))
-		if(channel) clonedSessions = clonedSessions.filter(t => t.channel == channel)
+		if(channel) clonedSessions = clonedSessions.filter(t => t.channel == channel || t.bot)
 		let length = clonedSessions.length
 		if(Config.allowLurking) clonedSessions = clonedSessions.filter(t => !t.lurking)
 		let lurkers = length - clonedSessions.length

@@ -113,12 +113,12 @@ class UserHandle {
 	loginBot(uid, token, callback) {
 		const bot = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
 		if(!bot) return callback({
-			type: "userNotExists",
-			message: "This user does not exist."
+			type: "botNotExists",
+			message: "This bot does not exist."
 		})
 		if (!bot.bot) return callback({
 			type: "userIsNotABot",
-			message: "The use you attempted to login with is not a bot."
+			message: "The user you attempted to login with is not a bot."
 		})
 		bcrypt.compare(token.split(".").slice(2).join("."), bot.crypt, function (err, matched) {
 			return err == null ? callback(null, bot, matched) : callback(err)
