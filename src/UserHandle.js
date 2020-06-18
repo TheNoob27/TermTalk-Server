@@ -25,7 +25,7 @@
 const bcrypt = require('bcrypt');
 const FlakeId = require('flakeid');
 const flake = new FlakeId({
-    timeOffset: (2020-1970)*31536000*1000 + (31536000*400)
+	timeOffset: (2020 - 1970) * 31536000 * 1000 + (31536000 * 400)
 })
 
 class UserHandle {
@@ -38,7 +38,7 @@ class UserHandle {
 			type: "invalidUID",
 			message: "The UID provided is not allowed to be used."
 		})
-		if(username == "Server") return callback({
+		if (username == "Server") return callback({
 			type: "invalidUsername",
 			message: "The username provided is not allowed to be used."
 		})
@@ -49,10 +49,53 @@ class UserHandle {
 		})
 		this._hashPassword(password, (err, hash) => {
 			if (err) return callback(err)
-				
+
 			const id = flake.gen()
-			this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash) VALUES (?, ?, ?, ?, ?);").run(id, uid, username, tag, hash)
+			this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash, bot, crypt) VALUES (?, ?, ?, ?, ?, ?, ?);").run(id, uid, username, tag, hash, 0, "")
 			return callback(null, id)
+		})
+	}
+
+	registerBot(uid, username, tag, user, callback) {
+		const ownerExists = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(user.uid)
+		if (!ownerExists) return callback({
+			type: "ownerNotExists",
+			message: "The user data provided was incorrect."
+		})
+		bcrypt.compare(user.password, ownerExists.passwordHash, (err, matched) => {
+			if(err) return callback(err)
+			if(!matched) return callback({
+				type: "ownerCredentialsIncorrect",
+				message: "The owner credentials provided were incorrect.",
+				code: 401
+			})
+
+			if (uid === "Server") return callback({
+				type: "invalidUID",
+				message: "The UID provided is not allowed to be used.",
+				code: 400
+			})
+
+			if (username == "Server") return callback({
+				type: "invalidUsername",
+				message: "The username provided is not allowed to be used.",
+				code: 400
+			})
+
+			const exists = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
+			if (exists) return callback({
+				type: "userExists",
+				message: "A user with this UID or username/tag combo already exists.",
+				code: 400
+			})
+
+			const id = flake.gen()
+			this._generateToken(id, (err, token, hash) => {
+				if (err) return callback(err)
+	
+				this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash, bot, crypt) VALUES (?, ?, ?, ?, ?, ?, ?);").run(id, uid, username, tag, token, 1, hash)
+				return callback(null, token)
+			})
 		})
 	}
 
@@ -64,6 +107,40 @@ class UserHandle {
 		})
 		bcrypt.compare(password, user.passwordHash, function (err, matched) {
 			return err == null ? callback(null, user, matched) : callback(err);
+		})
+	}
+
+	loginBot(token, callback) {
+		let id = Buffer.from(token.split(".")[1], "base64").toString("utf8")
+		const bot = this.Database.prepare("SELECT * FROM users WHERE id=?;").get(id)
+		if(!bot) return callback({
+			type: "botNotExists",
+			message: "This bot does not exist."
+		})
+		if (!bot.bot) return callback({
+			type: "userIsNotABot",
+			message: "The user you attempted to login with is not a bot."
+		})
+		bcrypt.compare(token.split(".").slice(2).join("."), bot.crypt, function (err, matched) {
+			return err == null ? callback(null, bot, matched) : callback(err)
+		})
+	}
+
+	validateBot(token, callback){
+		let id = Buffer.from(token.split(".")[1], "base64").toString("utf8")
+		const bot = this.Database.prepare("SELECT * FROM users WHERE id=?;").get(id)
+		if(!bot) return callback({
+			type: "botNotExists",
+			message: "This bot does not exist.",
+			code: 404
+		})
+		if (!bot.bot) return callback({
+			type: "userIsNotABot",
+			message: "The user you attempted to login with is not a bot.",
+			code: 400
+		})
+		bcrypt.compare(token.split(".").slice(2).join("."), bot.crypt, function (err, matched) {
+			return err == null ? callback(null, matched, bot) : callback(err)
 		})
 	}
 
@@ -103,9 +180,14 @@ class UserHandle {
 
 	isBanned(uid) {
 		const banned = this.Database.prepare("SELECT * FROM banned WHERE uid=?;").get(uid)
-		
+
 		if (banned) return true
 		return false
+	}
+
+	isBot(uid) {
+		const user = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
+		return !!user.bot
 	}
 
 	_hashPassword(password, callback) {
@@ -116,6 +198,20 @@ class UserHandle {
 				return callback(err, hash);
 			});
 		});
+	}
+
+	_generateToken(id, callback) {
+		let token = ""
+		token += Buffer.from(Date.now().toString()).toString("base64") + "."
+		token += Buffer.from(id.toString()).toString("base64") + "."
+		bcrypt.genSalt(20, (err, crypt) => {
+			if (err) return callback(err)
+			this._hashPassword(crypt, (err2, hash) => {
+				if (err2) return callback(err2)
+				token += crypt
+				return callback(null, token, hash)
+			})
+		})
 	}
 }
 

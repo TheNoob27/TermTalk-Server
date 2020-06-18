@@ -36,15 +36,15 @@ class Server {
 
 	static getMemberList(sessions, UserHandle, channel) {
 		let clonedSessions = JSON.parse(JSON.stringify(sessions))
-		if(channel) clonedSessions = clonedSessions.filter(t => t.channel == channel)
+		if(channel) clonedSessions = clonedSessions.filter(t => t.channel == channel || t.bot)
 		let length = clonedSessions.length
 		if(Config.allowLurking) clonedSessions = clonedSessions.filter(t => !t.lurking)
 		let lurkers = length - clonedSessions.length
 		let list = clonedSessions.map(t => UserHandle.getUserByUID(t.uid, (err, user) => {
 			if (err) return ""
-			return `${user.username}#${user.tag}${t.admin ? " +" : ""}`
+			return {username: user.username, tag: user.tag, uid: user.uid, admin: t.admin, bot: user.bot, id: user.id}
 		})).filter(t => t != "")
-		if(lurkers > 0) list.push(`${list.length > 0 ? `+ ${lurkers} lurker(s)` : `${lurkers} lurker(s)`}`)
+		if(lurkers > 0) list.push({lurkers: list.length > 0 ? `+ ${lurkers} lurker(s)` : `${lurkers} lurker(s)`})
 		return list
 	}
 

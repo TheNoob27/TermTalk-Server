@@ -29,6 +29,10 @@ const fs = require("fs")
 const readline = require("readline")
 const http = require("http")
 const https = require("https")
+const FlakeId = require('flakeid')
+const flake = new FlakeId({
+	timeOffset: (2020 - 1970) * 31536000 * 1000 + (31536000 * 400)
+})
 
 // Our files or utils
 const Config = require("./config.json")
@@ -212,12 +216,25 @@ io.on("connect", (socket) => {
 					}
 				}
 				Utils.Server.broadcast(`${user.username}#${user.tag} has reconnected.`, io, "General")
-				if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ channel: "General", uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })
+				if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ channel: "General", uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id, bot: User.isBot(data.uid) })
 				io.sockets.in("General").emit("method", {
 					method: "userConnect",
 					type: "serverRequest",
 					user: `${data.username}#${data.tag}`
 				})
+				let bots = sessions.filter(t => t.bot)
+				for (let i = 0; i < bots.length; i++) {
+					io.sockets.connected[bots[i].socketID].emit('memberConnect', {
+						member: {
+							username: data.username,
+							tag: data.tag,
+							id: data.id,
+							uid: data.uid,
+							bot: User.isBot(data.uid),
+							admin: Config.adminUIDs.includes(data.uid)
+						}
+					})
+				}
 				let memberList
 				try {
 					memberList = Utils.Server.getMemberList(sessions, User, "General")
@@ -253,57 +270,140 @@ io.on("connect", (socket) => {
 			type: "userBanned",
 			message: "You are banned."
 		})
-		User.login(d.uid, d.password, (err, user, matched) => {
-			if (err) {
-				if (err.type === "userNotExists") {
-					socket.emit("authResult", {
+		if (!d.bot) {
+			User.login(d.uid, d.password, (err, user, matched) => {
+				if (err) {
+					if (err.type === "userNotExists") {
+						return socket.emit("authResult", {
+							success: false,
+							method: "login",
+							...err
+						})
+					} else {
+						return socket.emit("authResult", {
+							success: false,
+							method: "login",
+							type: "serverError",
+							message: "The server encountered an error. Be sure to contact the admin."
+						})
+						console.log(err)
+					}
+				}
+				if (!matched) return socket.emit("authResult", {
+					success: false,
+					method: "login",
+					type: "userCredentialsWrong",
+					message: "The user's credentials are wrong."
+				})
+
+				let sessionID = Utils.Session.makeSessionID()
+				sessions.push({ channel: "General", uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id, id: user.id, bot: false })
+
+				socket.emit("authResult", {
+					success: true,
+					method: "login",
+					type: "success",
+					message: "Logged in successfully.",
+					user: {
+						id: user.id,
+						uid: user.uid,
+						username: user.username,
+						tag: user.tag,
+						sessionID
+					}
+				})
+
+				socket.join("General")
+				if (Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id, "General")
+				Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io, "General")
+				io.sockets.in("General").emit("method", {
+					method: "userConnect",
+					user: `${user.username}#${user.tag}`,
+					type: "serverRequest"
+				})
+				let bots = sessions.filter(t => t.bot)
+				for (let i = 0; i < bots.length; i++) {
+					io.sockets.connected[bots[i].socketID].emit('memberConnect', {
+						member: {
+							username: user.username,
+							tag: user.tag,
+							id: user.id,
+							uid: user.uid,
+							bot: false,
+							admin: Config.adminUIDs.includes(user.uid)
+						}
+					})
+				}
+			})
+		} else {
+			User.loginBot(d.token, (err, bot, matched) => {
+				if (err) {
+					if (err.type === "botNotExists" || err.type == "userIsNotABot") {
+						return socket.emit("authResult", {
+							success: false,
+							method: "login",
+							...err
+						})
+					} else {
+						return socket.emit("authResult", {
+							success: false,
+							method: "login",
+							type: "serverError",
+							message: "The server encountered an error. Be sure to contact the admin."
+						})
+						console.log(err)
+					}
+				}
+				if (bot.passwordHash !== d.token) {
+					return socket.emit("authResult", {
 						success: false,
 						method: "login",
-						...err
+						type: "botCredentialsWrong",
+						message: "The bot's credentials are wrong."
 					})
-				} else {
-					socket.emit("authResult", {
-						success: false,
-						method: "login",
-						type: "serverError",
-						message: "The server encountered an error. Be sure to contact the admin."
+				}
+				if (!matched) return socket.emit("authResult", {
+					success: false,
+					method: "login",
+					type: "botCredentialsWrong",
+					message: "The bot's credentials are wrong."
+				})
+				let sessionID = Utils.Session.makeSessionID()
+				sessions.push({ uid: bot.uid, sessionID, admin: Config.adminUIDs.includes(bot.uid), socketID: socket.id, id: bot.id, bot: true })
+				socket.emit("authResult", {
+					success: true,
+					method: "login",
+					type: "success",
+					message: "Logged in successfully.",
+					bot: {
+						id: bot.id,
+						uid: bot.uid,
+						username: bot.username,
+						tag: bot.tag,
+						sessionID
+					}
+				})
+				io.emit("method", {
+					method: "userConnect",
+					user: `${bot.username}#${bot.tag}`,
+					type: "serverRequest"
+				})
+				Utils.Server.broadcast(`${bot.username}#${bot.tag} has connected.`, io)
+				let bots = sessions.filter(t => t.bot)
+				for (let i = 0; i < bots.length; i++) {
+					io.sockets.connected[bots[i].socketID].emit('memberConnect', {
+						member: {
+							username: bot.username,
+							tag: bot.tag,
+							id: bot.id,
+							uid: bot.uid,
+							bot: true,
+							admin: Config.adminUIDs.includes(bot.uid)
+						}
 					})
-					console.log(err)
-				}
-			}
-			if (!matched) return socket.emit("authResult", {
-				success: false,
-				method: "login",
-				type: "userCredentialsWrong",
-				message: "The user's credentials are wrong."
-			})
-
-			let sessionID = Utils.Session.makeSessionID()
-			sessions.push({ channel: "General", uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id, id: user.id })
-
-			socket.emit("authResult", {
-				success: true,
-				method: "login",
-				type: "success",
-				message: "Logged in successfully.",
-				user: {
-					id: user.id,
-					uid: user.uid,
-					username: user.username,
-					tag: user.tag,
-					sessionID
 				}
 			})
-
-			socket.join("General")
-			if (Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id, "General")
-			Utils.Server.broadcast(`${user.username}#${user.tag} has connected.`, io, "General")
-			io.sockets.in("General").emit("method", {
-				method: "userConnect",
-				user: `${user.username}#${user.tag}`,
-				type: "serverRequest"
-			})
-		})
+		}
 	})
 
 	socket.on("register", (data) => {
@@ -345,7 +445,7 @@ io.on("connect", (socket) => {
 			}
 
 			let sessionID = Utils.Session.makeSessionID()
-			sessions.push({ channel: "General", uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id, id })
+			sessions.push({ channel: "General", uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id, id, bot: false })
 
 			socket.emit("authResult", {
 				success: true,
@@ -368,6 +468,19 @@ io.on("connect", (socket) => {
 				type: "serverRequest",
 				user: `${username}#${tag}`
 			})
+			let bots = sessions.filter(t => t.bot)
+			for (let i = 0; i < bots.length; i++) {
+				io.sockets.connected[bots[i].socketID].emit('memberConnect', {
+					member: {
+						username,
+						tag,
+						id,
+						uid,
+						bot: false,
+						admin: Config.adminUIDs.includes(uid)
+					}
+				})
+			}
 		})
 	})
 
@@ -399,6 +512,12 @@ io.on("connect", (socket) => {
 		})
 
 		let session = sessions.find(t => t.sessionID == data.sessionID && t.uid == data.uid)
+		if (session.bot) return socket.emit("methodResult", {
+			success: false,
+			method: "messageSend",
+			type: "userIsBot",
+			message: "The user is a bot, use the HTTP requests."
+		})
 
 		if (serverCache.addons.hardCommands.has(`${data.msg.slice(1).trim().split(/ +/g)[0]}`) && data.msg.charAt(0) == "/") {
 			let cmd = data.msg.slice(1).trim().split(/ +/g)[0]
@@ -417,7 +536,7 @@ io.on("connect", (socket) => {
 			message: "Client cannot send messages while lurking."
 		})
 		if (data.uid === "Server") return;
-		if(serverCache.addons.connectors.rateLimit(serverCache, io, socket.id, session.channel)) return; // stop if session#channel is ratelimited
+		if (serverCache.addons.connectors.rateLimit(serverCache, io, socket.id, session.channel)) return; // stop if session#channel is ratelimited
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
 		if (data.msg.trim().length > Config.maxCharacterLength) return socket.emit("methodResult", {
 			success: false,
@@ -431,7 +550,7 @@ io.on("connect", (socket) => {
 			type: "noMessageContent",
 			message: `The message the client attempted to send had no body.`
 		})
-		
+
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		if (serverCache.addons.chat.locked[session.channel] && !session.admin) return socket.emit("methodResult", {
 			success: false,
@@ -444,8 +563,13 @@ io.on("connect", (socket) => {
 		if (!serverCache.addons.chat.chatHistory[session.channel]) serverCache.addons.chat.chatHistory[session.channel] = []
 		if (serverCache.addons.chat.chatHistory[session.channel].length > 100 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].shift()
 
-		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].push({ timestamp: Date.now(), username: data.username, channel: session.channel, tag: data.tag, msg: data.msg.replace("\n", "") })
-		io.sockets.in(session.channel).emit('msg', { channel: session.channel, msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
+		let id = flake.gen()
+		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].push({ id, timestamp: Date.now(), username: data.username, channel: session.channel, tag: data.tag, msg: data.msg.replace("\n", "") })
+		io.sockets.in(session.channel).emit('msg', { id, bot: session.bot, channel: session.channel, msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, userID: data.id })
+		let bots = sessions.filter(t => t.bot)
+		for (let i = 0; i < bots.length; i++) {
+			io.sockets.connected[bots[i].socketID].emit('msg', { id, bot: session.bot, channel: session.channel, msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, userID: data.id })
+		}
 	})
 
 	socket.on("disconnecting", () => {
@@ -457,12 +581,31 @@ io.on("connect", (socket) => {
 			if (err) return;
 			console.log(`${d.username}#${d.tag} has disconnected.`)
 			if (session) {
-				io.sockets.in(session.channel).emit("method", {
+				if (!session.bot) io.sockets.in(session.channel).emit("method", {
 					method: "userDisconnect",
 					type: "serverRequest",
 					user: `${d.username}#${d.tag}`
 				})
+				else io.emit("method", {
+					method: "userDisconnect",
+					type: "serverRequest",
+					user: `${d.username}#${d.tag}`
+				})
+
 				Utils.Server.broadcast(`${d.username}#${d.tag} has disconnected.`, io)
+				let bots = sessions.filter(t => t.bot)
+				for (let i = 0; i < bots.length; i++) {
+					io.sockets.connected[bots[i].socketID].emit('memberDisconnect', {
+						member: {
+							username: d.username,
+							tag: d.tag,
+							id: d.id,
+							uid: d.uid,
+							bot: session.bot,
+							admin: session.admin
+						}
+					})
+				}
 				serverCache.sessions.push(session)
 				Utils.Session.addSessionToDatabase(session)
 				setTimeout(() => {
@@ -485,12 +628,21 @@ io.on("connect", (socket) => {
 			message: "The client did not return any or enough data."
 		})
 
-		if (!sessions.find(t => t.sessionID == data.sessionID)) return socket.emit("methodResult", {
+		let session = sessions.find(t => t.sessionID == data.sessionID)
+		if (!session) return socket.emit("methodResult", {
 			success: false,
 			method: data.method,
 			type: "invalidSessionID",
 			message: "The client did not provide any session ID or a valid one, reconnect."
 		})
+
+		if (session.bot) return socket.emit("methodResult", {
+			success: false,
+			method: data.method,
+			type: "userIsBot",
+			message: "The user is a bot, use the HTTP requests."
+		})
+
 		if (data.method == "getMemberList") {
 			let memberList;
 			try {
@@ -524,7 +676,7 @@ io.on("connect", (socket) => {
 })
 
 ci.on("SIGINT", () => {
-	for(let i = 1; i < sessions.length; i++){
+	for (let i = 1; i < sessions.length; i++) {
 		Utils.Session.addSessionToDatabase(sessions[i])
 	}
 	process.exit(0)
@@ -555,6 +707,22 @@ server.listen(Config.port, () => {
 		console.log("Created Old Sessions table.")
 	}
 
+	let botsColumn = UserDB.prepare("SELECT COUNT(*) AS CNTREC FROM pragma_table_info('users') WHERE name='bot'").get().CNTREC
+	if (botsColumn == 0) {
+		UserDB.prepare("ALTER TABLE users ADD COLUMN bot BIT;").run()
+		setTimeout(() => {
+			UserDB.prepare("UPDATE users SET bot=0;").run()
+		}, 500)
+	}
+
+	let cryptColumn = UserDB.prepare("SELECT COUNT(*) AS CNTREC FROM pragma_table_info('users') WHERE name='crypt'").get().CNTREC
+	if (cryptColumn == 0) {
+		UserDB.prepare("ALTER TABLE users ADD COLUMN crypt TEXT;").run()
+		setTimeout(() => {
+			UserDB.prepare("UPDATE users SET crypt=\"\";").run()
+		}, 500)
+	}
+
 	console.log(`Server online on port ${Config.port}.`)
 })
 
@@ -566,7 +734,7 @@ server.listen(Config.port, () => {
 function createServer(protocol, serverOptions) {
 	return protocol.createServer(serverOptions, (req, res) => {
 		// if(!Config.publicServer || ["0.0.0.0", "localhost", "127.0.0.1"].includes(Config.publicIP)) return res.writeHead(400) // Was thinking maybe pinging should be all servers so I commented this out
-		if (req.url == "/ping") {
+		if (req.url == "/ping" && req.method == "GET") {
 			let toWrite = JSON.stringify({
 				members: Utils.Server.getMemberList(sessions, User).length,
 				maxMembers: Config.maxSlots,
@@ -577,6 +745,11 @@ function createServer(protocol, serverOptions) {
 			})
 			res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "https://termtalk.app" })
 			res.end(toWrite)
+			return
+		}
+		if (Config.enableAPIEndpoints) {
+			if (req.method == "GET") return Utils.API.handleGET(req, res, { Utils, User, io, sessions, cache: serverCache })
+			else if (req.method == "POST") return Utils.API.handlePOST(req, res, { Utils, User, io, sessions, cache: serverCache })
 		}
 	})
 }
