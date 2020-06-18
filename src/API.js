@@ -1,18 +1,194 @@
 const config = require("../config.json")
+const url = require("url") // Built in node url
 
 class API {
-  static handleGET(req, res, service) {
-
+  static handleGET(req, res, Service) {
+    if (!req.headers.authorization || !req.headers.authorization.startsWith("Bot ")) {
+      let toWrite = JSON.stringify({
+        method: "botValidate",
+        type: "invalidToken",
+        message: "No valid token provided.",
+        code: 401,
+        success: false
+      })
+      res.writeHead(401, { "Content-Type": "application/json" })
+      return res.end(toWrite)
+    }
+    Service.User.validateBot(req.headers.authorization.slice(4), (err, matched, bot) => {
+      if(bot.passwordHash !== req.headers.authorization.slice(4)) {
+        let toWrite = JSON.stringify({
+          method: "botValidate",
+          type: "invalidToken",
+          message: "The token provided was invalid.",
+          code: 401,
+          success: false
+        })
+        res.writeHead(401, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
+      if (err) {
+        let toWrite = JSON.stringify({
+          method: "botValidate",
+          type: err.type,
+          message: err.message || "Server error.",
+          code: err.code || 500,
+          success: false
+        })
+        res.writeHead(err.code || 500, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
+      if (!matched) {
+        let toWrite = JSON.stringify({
+          method: "botValidate",
+          type: "invalidToken",
+          message: "The token provided was not valid.",
+          code: 401,
+          success: false
+        })
+        res.writeHead(401, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
+      let paths = req.url.slice(1).split("/")
+      if (paths[0].startsWith("channels")) {
+        getChannelList(req, res, Service)
+      } else if (paths[0].startsWith("members")) {
+        getMemberList(req, res, Service)
+      }
+    })
   }
 
   static handlePOST(req, res, Service) {
-    let paths = req.url.slice(1).split("/")
-    if (paths[0] == "channels") {
-      handleMessageSend(req, res, Service)
-    } else if (paths[0] == "bot") {
-      handleBot(req, res, Service)
+    if (!req.headers.authorization || !req.headers.authorization.startsWith("Bot ")) {
+      let toWrite = JSON.stringify({
+        method: "botValidate",
+        type: "invalidToken",
+        message: "No valid token provided.",
+        code: 401,
+        success: false
+      })
+      res.writeHead(401, { "Content-Type": "application/json" })
+      return res.end(toWrite)
     }
+    Service.User.validateBot(req.headers.authorization.slice(4), (err, matched, bot) => {
+      if(bot.passwordHash !== req.headers.authorization.slice(4)) {
+        let toWrite = JSON.stringify({
+          method: "botValidate",
+          type: "invalidToken",
+          message: "The token provided was invalid.",
+          code: 401,
+          success: false
+        })
+        res.writeHead(401, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
+      if (err) {
+        let toWrite = JSON.stringify({
+          method: "botValidate",
+          type: err.type,
+          message: err.message || "Server error.",
+          code: err.code || 500,
+          success: false
+        })
+        res.writeHead(err.code || 500, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
+      if (!matched) {
+        let toWrite = JSON.stringify({
+          method: "botValidate",
+          type: "invalidToken",
+          message: "The token provided was not valid.",
+          code: 401,
+          success: false
+        })
+        res.writeHead(401, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
+      let paths = req.url.slice(1).split("/")
+      if (paths[0] == "channels") {
+        handleMessageSend(req, res, Service)
+      } else if (paths[0] == "bot") {
+        handleBot(req, res, Service)
+      }
+    })
   }
+}
+
+function getChannelList(req, res, Service) {
+  let query
+  try {
+    query = url.parse(req.url, true).query
+  } catch (e) {
+    let toWrite = JSON.stringify({
+      code: 400,
+      message: "Expected url form encoded input.",
+      type: "badInput",
+      method: "getChannelList",
+      success: false
+    })
+    res.writeHead(200, { "Content-Type": "application/json" })
+    return res.end(toWrite)
+  }
+  if (!query.sessionID || !Service.sessions.find(t => t.sessionID == query.sessionID)) {
+    let toWrite = JSON.stringify({
+      method: "messageSend",
+      type: "invalidSessionID",
+      message: "No valid session ID provided.",
+      code: 401,
+      success: false
+    })
+    res.writeHead(401, { "Content-Type": "application/json" })
+    return res.end(toWrite)
+  }
+  let toWrite = JSON.stringify({
+    channels: ["General", ...config.channels],
+    code: 200,
+    message: "Retrieved channel list.",
+    type: "success",
+    success: true,
+    method: "getChannelList"
+  })
+  res.writeHead(200, { "Content-Type": "application/json" })
+  return res.end(toWrite)
+}
+
+function getMemberList(req, res, Service) {
+  let query
+  try {
+    query = url.parse(req.url, true).query
+  } catch (e) {
+    let toWrite = JSON.stringify({
+      code: 400,
+      message: "Expected url form encoded input.",
+      type: "badInput",
+      method: "getChannelList",
+      success: false
+    })
+    res.writeHead(400, { "Content-Type": "application/json" })
+    return res.end(toWrite)
+  }
+  if (!query.sessionID || !Service.sessions.find(t => t.sessionID == query.sessionID)) {
+    let toWrite = JSON.stringify({
+      method: "messageSend",
+      type: "invalidSessionID",
+      message: "No valid session ID provided.",
+      code: 401,
+      success: false
+    })
+    res.writeHead(401, { "Content-Type": "application/json" })
+    return res.end(toWrite)
+  }
+
+  let list = Service.Utils.Server.getMemberList(Service.sessions, Service.User, query.channel || "")
+  let toWrite = JSON.stringify({
+    members: list,
+    code: 200,
+    message: "Retrieved member list.",
+    type: "success",
+    success: true,
+    method: "getMemberList"
+  })
+  res.writeHead(200, { "Content-Type": "application/json" })
+  return res.end(toWrite)
 }
 
 function handleMessageSend(req, res, Service) {
@@ -59,7 +235,7 @@ function handleMessageSend(req, res, Service) {
         let toWrite = JSON.stringify({
           method: "messageSend",
           type: "insufficientData",
-          message: "The client did not return any or enough data.",
+          message: "Did not receive any or enough data.",
           code: 400,
           success: false
         })
@@ -71,7 +247,7 @@ function handleMessageSend(req, res, Service) {
         let toWrite = JSON.stringify({
           method: "messageSend",
           type: "invalidSessionID",
-          message: "The client did not provide any session ID or a valid one, reconnect.",
+          message: "No valid session ID provided.",
           code: 401,
           success: false
         })
@@ -83,7 +259,7 @@ function handleMessageSend(req, res, Service) {
         let toWrite = JSON.stringify({
           method: "messageSend",
           type: "invalidDataTypes",
-          message: "The client did not provide the correct data types in the message.",
+          message: "Received incorrect data types.",
           code: 400,
           success: false
         })
@@ -139,7 +315,7 @@ function handleBot(req, res, Service) {
         let toWrite = JSON.stringify({
           method: "botCreate",
           type: "insufficientData",
-          message: "The client did not return any or enough data.",
+          message: "Did not receive any or enough data.",
           code: 400,
           success: false
         })
@@ -151,7 +327,7 @@ function handleBot(req, res, Service) {
         let toWrite = JSON.stringify({
           method: "botCreate",
           type: "invalidDataTypes",
-          message: "The client did not provide the correct data types for bot creation.",
+          message: "Received incorrect data types.",
           code: 400,
           success: false
         })

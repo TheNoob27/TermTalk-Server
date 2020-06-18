@@ -42,9 +42,9 @@ class Server {
 		let lurkers = length - clonedSessions.length
 		let list = clonedSessions.map(t => UserHandle.getUserByUID(t.uid, (err, user) => {
 			if (err) return ""
-			return `${user.username}#${user.tag}${t.admin ? " +" : ""}`
+			return {username: user.username, tag: user.tag, uid: user.uid, admin: t.admin, bot: user.bot, id: user.id}
 		})).filter(t => t != "")
-		if(lurkers > 0) list.push(`${list.length > 0 ? `+ ${lurkers} lurker(s)` : `${lurkers} lurker(s)`}`)
+		if(lurkers > 0) list.push({lurkers: list.length > 0 ? `+ ${lurkers} lurker(s)` : `${lurkers} lurker(s)`})
 		return list
 	}
 

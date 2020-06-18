@@ -110,8 +110,9 @@ class UserHandle {
 		})
 	}
 
-	loginBot(uid, token, callback) {
-		const bot = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
+	loginBot(token, callback) {
+		let id = Buffer.from(token.split(".")[1], "base64").toString("utf8")
+		const bot = this.Database.prepare("SELECT * FROM users WHERE id=?;").get(id)
 		if(!bot) return callback({
 			type: "botNotExists",
 			message: "This bot does not exist."
@@ -122,6 +123,24 @@ class UserHandle {
 		})
 		bcrypt.compare(token.split(".").slice(2).join("."), bot.crypt, function (err, matched) {
 			return err == null ? callback(null, bot, matched) : callback(err)
+		})
+	}
+
+	validateBot(token, callback){
+		let id = Buffer.from(token.split(".")[1], "base64").toString("utf8")
+		const bot = this.Database.prepare("SELECT * FROM users WHERE id=?;").get(id)
+		if(!bot) return callback({
+			type: "botNotExists",
+			message: "This bot does not exist.",
+			code: 404
+		})
+		if (!bot.bot) return callback({
+			type: "userIsNotABot",
+			message: "The user you attempted to login with is not a bot.",
+			code: 400
+		})
+		bcrypt.compare(token.split(".").slice(2).join("."), bot.crypt, function (err, matched) {
+			return err == null ? callback(null, matched, bot) : callback(err)
 		})
 	}
 

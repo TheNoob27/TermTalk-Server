@@ -29,7 +29,7 @@ const fs = require("fs")
 const readline = require("readline")
 const http = require("http")
 const https = require("https")
-const FlakeId = require('flakeid');
+const FlakeId = require('flakeid')
 const flake = new FlakeId({
 	timeOffset: (2020 - 1970) * 31536000 * 1000 + (31536000 * 400)
 })
@@ -216,12 +216,23 @@ io.on("connect", (socket) => {
 					}
 				}
 				Utils.Server.broadcast(`${user.username}#${user.tag} has reconnected.`, io, "General")
-				if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ channel: "General", uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id, bot: User.isBot(uid) })
+				if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ channel: "General", uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id, bot: User.isBot(data.uid) })
 				io.sockets.in("General").emit("method", {
 					method: "userConnect",
 					type: "serverRequest",
 					user: `${data.username}#${data.tag}`
 				})
+				let bots = sessions.filter(t => t.bot)
+				for (let i = 0; i < bots.length; i++) {
+					io.sockets.connected[bots[i].socketID].emit('memberConnect', {
+						member: {
+							username: data.username,
+							tag: data.tag,
+							id: data.id,
+							uid: data.uid
+						}
+					})
+				}
 				let memberList
 				try {
 					memberList = Utils.Server.getMemberList(sessions, User, "General")
@@ -261,13 +272,13 @@ io.on("connect", (socket) => {
 			User.login(d.uid, d.password, (err, user, matched) => {
 				if (err) {
 					if (err.type === "userNotExists") {
-						socket.emit("authResult", {
+						return socket.emit("authResult", {
 							success: false,
 							method: "login",
 							...err
 						})
 					} else {
-						socket.emit("authResult", {
+						return socket.emit("authResult", {
 							success: false,
 							method: "login",
 							type: "serverError",
@@ -308,18 +319,29 @@ io.on("connect", (socket) => {
 					user: `${user.username}#${user.tag}`,
 					type: "serverRequest"
 				})
+				let bots = sessions.filter(t => t.bot)
+				for (let i = 0; i < bots.length; i++) {
+					io.sockets.connected[bots[i].socketID].emit('memberConnect', {
+						member: {
+							username: user.username,
+							tag: user.tag,
+							id: user.id,
+							uid: user.uid
+						}
+					})
+				}
 			})
 		} else {
-			User.loginBot(d.uid, d.token, (err, bot, matched) => {
+			User.loginBot(d.token, (err, bot, matched) => {
 				if (err) {
 					if (err.type === "botNotExists" || err.type == "userIsNotABot") {
-						socket.emit("authResult", {
+						return socket.emit("authResult", {
 							success: false,
 							method: "login",
 							...err
 						})
 					} else {
-						socket.emit("authResult", {
+						return socket.emit("authResult", {
 							success: false,
 							method: "login",
 							type: "serverError",
@@ -327,6 +349,14 @@ io.on("connect", (socket) => {
 						})
 						console.log(err)
 					}
+				}
+				if (bot.passwordHash !== d.token) {
+					return socket.emit("authResult", {
+						success: false,
+						method: "login",
+						type: "botCredentialsWrong",
+						message: "The bot's credentials are wrong."
+					})
 				}
 				if (!matched) return socket.emit("authResult", {
 					success: false,
@@ -355,6 +385,17 @@ io.on("connect", (socket) => {
 					type: "serverRequest"
 				})
 				Utils.Server.broadcast(`${bot.username}#${bot.tag} has connected.`, io)
+				let bots = sessions.filter(t => t.bot)
+				for (let i = 0; i < bots.length; i++) {
+					io.sockets.connected[bots[i].socketID].emit('memberConnect', {
+						member: {
+							username: bot.username,
+							tag: bot.tag,
+							id: bot.id,
+							uid: bot.uid
+						}
+					})
+				}
 			})
 		}
 	})
@@ -421,6 +462,17 @@ io.on("connect", (socket) => {
 				type: "serverRequest",
 				user: `${username}#${tag}`
 			})
+			let bots = sessions.filter(t => t.bot)
+			for (let i = 0; i < bots.length; i++) {
+				io.sockets.connected[bots[i].socketID].emit('memberConnect', {
+					member: {
+						username,
+						tag,
+						id,
+						uid
+					}
+				})
+			}
 		})
 	})
 
@@ -431,7 +483,6 @@ io.on("connect", (socket) => {
 	})
 
 	socket.on("msg", (data) => {
-		console.log(data)
 		if (!data || !["id", "uid", "username", "tag", "msg"].every((k) => k in data) || [data.id, data.uid, data.username, data.tag, data.msg].some(str => str === "")) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
@@ -453,7 +504,7 @@ io.on("connect", (socket) => {
 		})
 
 		let session = sessions.find(t => t.sessionID == data.sessionID && t.uid == data.uid)
-		if(session.bot) return socket.emit("methodResult", {
+		if (session.bot) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
 			type: "userIsBot",
@@ -522,7 +573,7 @@ io.on("connect", (socket) => {
 			if (err) return;
 			console.log(`${d.username}#${d.tag} has disconnected.`)
 			if (session) {
-				if(!session.bot) io.sockets.in(session.channel).emit("method", {
+				if (!session.bot) io.sockets.in(session.channel).emit("method", {
 					method: "userDisconnect",
 					type: "serverRequest",
 					user: `${d.username}#${d.tag}`
@@ -532,7 +583,19 @@ io.on("connect", (socket) => {
 					type: "serverRequest",
 					user: `${d.username}#${d.tag}`
 				})
+
 				Utils.Server.broadcast(`${d.username}#${d.tag} has disconnected.`, io)
+				let bots = sessions.filter(t => t.bot)
+				for (let i = 0; i < bots.length; i++) {
+					io.sockets.connected[bots[i].socketID].emit('memberDisconnect', {
+						member: {
+							username: d.username,
+							tag: d.tag,
+							id: d.id,
+							uid: d.uid
+						}
+					})
+				}
 				serverCache.sessions.push(session)
 				Utils.Session.addSessionToDatabase(session)
 				setTimeout(() => {
@@ -562,8 +625,8 @@ io.on("connect", (socket) => {
 			type: "invalidSessionID",
 			message: "The client did not provide any session ID or a valid one, reconnect."
 		})
-		
-		if(session.bot) return socket.emit("methodResult", {
+
+		if (session.bot) return socket.emit("methodResult", {
 			success: false,
 			method: data.method,
 			type: "userIsBot",
