@@ -1,5 +1,9 @@
 const config = require("../config.json")
 const url = require("url") // Built in node url
+const FlakeId = require('flakeid')
+const flake = new FlakeId({
+	timeOffset: (2020 - 1970) * 31536000 * 1000 + (31536000 * 400)
+})
 
 class API {
   static handleGET(req, res, Service) {
@@ -58,6 +62,8 @@ class API {
   }
 
   static handlePOST(req, res, Service) {
+    let paths = req.url.slice(1).split("/")
+    if(paths[0] == "bots") return handleBot(req, res, Service)
     if (!req.headers.authorization || !req.headers.authorization.startsWith("Bot ")) {
       let toWrite = JSON.stringify({
         method: "botValidate",
@@ -103,11 +109,8 @@ class API {
         res.writeHead(401, { "Content-Type": "application/json" })
         return res.end(toWrite)
       }
-      let paths = req.url.slice(1).split("/")
       if (paths[0] == "channels") {
         handleMessageSend(req, res, Service)
-      } else if (paths[0] == "bot") {
-        handleBot(req, res, Service)
       }
     })
   }
@@ -178,8 +181,6 @@ function getMemberList(req, res, Service) {
     return res.end(toWrite)
   }
 
-  console.log(query.channel)
-  console.log(config.channels)
   if(query.channel && !config.channels.includes(query.channel)){
     let toWrite = JSON.stringify({
       method: "getMemberList",
@@ -281,10 +282,13 @@ function handleMessageSend(req, res, Service) {
         return res.end(toWrite)
       }
       if (!body.channel) body.channel = paths[1]
-      Service.io.sockets.in(paths[1]).emit("msg", body)
+      let id = flake.gen()
+      let userID = body.id
+      delete body.id
+      Service.io.sockets.in(paths[1]).emit("msg", {id, userID, ...body})
       let toWrite = JSON.stringify({
         code: 200,
-        message: "Sent.",
+        message: {id, userID, ...body},
         type: "success",
         method: "messageSend",
         success: true

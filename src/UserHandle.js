@@ -51,7 +51,7 @@ class UserHandle {
 			if (err) return callback(err)
 
 			const id = flake.gen()
-			this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash, bot, crypt) VALUES (?, ?, ?, ?, ?, ?, ?);").run(id, uid, username, tag, hash, 0, "")
+			this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash, bot, crypt, owner) VALUES (?, ?, ?, ?, ?, ?, ?);").run(id, uid, username, tag, hash, 0, "", "")
 			return callback(null, id)
 		})
 	}
@@ -93,7 +93,7 @@ class UserHandle {
 			this._generateToken(id, (err, token, hash) => {
 				if (err) return callback(err)
 	
-				this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash, bot, crypt) VALUES (?, ?, ?, ?, ?, ?, ?);").run(id, uid, username, tag, token, 1, hash)
+				this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash, bot, crypt, owner) VALUES (?, ?, ?, ?, ?, ?, ?, ?);").run(id, uid, username, tag, token, 1, hash, user.uid)
 				return callback(null, token)
 			})
 		})
