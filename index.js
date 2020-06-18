@@ -39,6 +39,10 @@ const Config = require("./config.json")
 const Utils = require("./src/Utils.js")
 const serverCache = require("./src/serverCache.js")
 
+if(Config.channels.includes("General") || Config.channels.includes("DM")){
+	return console.log("General and/or DM channels should't be defined")
+}
+
 // Make database directory
 if (!fs.existsSync(`${__dirname}/Databases`)) fs.mkdirSync(`${__dirname}/Databases`)
 
@@ -182,9 +186,9 @@ io.on("connect", (socket) => {
 				type: "userBanned",
 				message: "You are banned."
 			})
-			if (!data || !["uid", "username", "tag", "sessionID"].every((k) => k in data) || [data.uid, data.username, data.tag].some(str => str === "")) return socket.emit("authResult", {
+			if (!data || !["uid", "username", "tag", "sessionID", "id"].every((k) => k in data) || [data.uid, data.username, data.tag, data.id].some(str => str === "")) return socket.emit("authResult", {
 				success: false,
-				method: "register",
+				method: "reconnect",
 				type: "insufficientData",
 				message: "The client did not return any or enough data."
 			})
@@ -216,7 +220,7 @@ io.on("connect", (socket) => {
 					}
 				}
 				Utils.Server.broadcast(`${user.username}#${user.tag} has reconnected.`, io, "General")
-				if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ channel: "General", uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id, bot: User.isBot(data.uid) })
+				if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ channel: "General", uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id, bot: User.isBot(data.uid), id: data.id })
 				io.sockets.in("General").emit("method", {
 					method: "userConnect",
 					type: "serverRequest",
@@ -255,6 +259,7 @@ io.on("connect", (socket) => {
 					memberList
 				})
 			})
+			socket.removeAllListeners()
 		}
 	})
 	socket.on("login", (d) => {
@@ -338,7 +343,7 @@ io.on("connect", (socket) => {
 		} else {
 			User.loginBot(d.token, (err, bot, matched) => {
 				if (err) {
-					if (err.type === "botNotExists" || err.type == "userIsNotABot") {
+					if (err.type === "botNotExists" || err.type == "userIsNotABot" || err.type == "invalidToken") {
 						return socket.emit("authResult", {
 							success: false,
 							method: "login",

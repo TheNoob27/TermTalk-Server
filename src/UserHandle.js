@@ -63,8 +63,8 @@ class UserHandle {
 			message: "The user data provided was incorrect."
 		})
 		bcrypt.compare(user.password, ownerExists.passwordHash, (err, matched) => {
-			if(err) return callback(err)
-			if(!matched) return callback({
+			if (err) return callback(err)
+			if (!matched) return callback({
 				type: "ownerCredentialsIncorrect",
 				message: "The owner credentials provided were incorrect.",
 				code: 401
@@ -92,7 +92,7 @@ class UserHandle {
 			const id = flake.gen()
 			this._generateToken(id, (err, token, hash) => {
 				if (err) return callback(err)
-	
+
 				this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash, bot, crypt, owner) VALUES (?, ?, ?, ?, ?, ?, ?, ?);").run(id, uid, username, tag, token, 1, hash, user.uid)
 				return callback(null, token)
 			})
@@ -111,9 +111,16 @@ class UserHandle {
 	}
 
 	loginBot(token, callback) {
+		if (token.split(".").length < 3) {
+			return callback({
+				type: "invalidToken",
+				message: "The token provided was invalid.",
+				code: 401
+			})
+		}
 		let id = Buffer.from(token.split(".")[1], "base64").toString("utf8")
 		const bot = this.Database.prepare("SELECT * FROM users WHERE id=?;").get(id)
-		if(!bot) return callback({
+		if (!bot) return callback({
 			type: "botNotExists",
 			message: "This bot does not exist."
 		})
@@ -126,10 +133,17 @@ class UserHandle {
 		})
 	}
 
-	validateBot(token, callback){
+	validateBot(token, callback) {
+		if (token.split(".").length < 3) {
+			return callback({
+				type: "invalidToken",
+				message: "The token provided was invalid.",
+				code: 401
+			})
+		}
 		let id = Buffer.from(token.split(".")[1], "base64").toString("utf8")
 		const bot = this.Database.prepare("SELECT * FROM users WHERE id=?;").get(id)
-		if(!bot) return callback({
+		if (!bot) return callback({
 			type: "botNotExists",
 			message: "This bot does not exist.",
 			code: 404
