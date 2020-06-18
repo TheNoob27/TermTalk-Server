@@ -3,13 +3,13 @@ const Server = require("../Server")
 exports.run = (Service, Data, args) => {
   args.shift()
   let channelName = args.join(" ")
-  if(!config.channels.includes(channelName) && channelName != "General") return Service.io.sockets.connected[Service.session.socketID].emit("methodResult", {
+  if (!config.channels.includes(channelName) && channelName != "General") return Service.io.sockets.connected[Service.session.socketID].emit("methodResult", {
     success: false,
     method: "channelChange",
     type: "channelNotFound",
     message: `Channel not found.`
   })
-  if(channelName == Service.session.channel) return Service.io.sockets.connected[Service.session.socketID].emit("methodResult", {
+  if (channelName == Service.session.channel) return Service.io.sockets.connected[Service.session.socketID].emit("methodResult", {
     success: false,
     method: "channelChange",
     type: "alreadyInChannel",
@@ -52,7 +52,7 @@ exports.run = (Service, Data, args) => {
     channel: channelName
   })
   if (config.saveLoadHistory) Service.cache.addons.connectors.sendHistory(Service.cache, Service.io, Service.session.socketID, channelName)
-  if(!Service.cache.addons.chat.locked[oldChannel])Service.io.sockets.in(oldChannel).emit("method", {
+  if (!Service.cache.addons.chat.locked[oldChannel]) Service.io.sockets.in(oldChannel).emit("method", {
     method: "userChangeChannel",
     username: Data.username,
     tag: Data.tag,
@@ -62,7 +62,7 @@ exports.run = (Service, Data, args) => {
     join: false
   })
 
-  if(!Service.cache.addons.chat.locked[channelName]) Service.io.sockets.in(channelName).emit("method", {
+  if (!Service.cache.addons.chat.locked[channelName]) Service.io.sockets.in(channelName).emit("method", {
     method: "userChangeChannel",
     username: Data.username,
     tag: Data.tag,

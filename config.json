@@ -13,5 +13,6 @@
 	"secure": false,
 	"keyFile": "",
 	"chainFile": "",
-	"certFile": ""
+	"certFile": "",
+	"enableAPIEndpoints": true
 }

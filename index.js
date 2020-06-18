@@ -212,7 +212,7 @@ io.on("connect", (socket) => {
 					}
 				}
 				Utils.Server.broadcast(`${user.username}#${user.tag} has reconnected.`, io, "General")
-				if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ channel: "General", uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id })
+				if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ channel: "General", uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id, bot: Utils.User.isBot(uid) })
 				io.sockets.in("General").emit("method", {
 					method: "userConnect",
 					type: "serverRequest",
@@ -279,7 +279,7 @@ io.on("connect", (socket) => {
 			})
 
 			let sessionID = Utils.Session.makeSessionID()
-			sessions.push({ channel: "General", uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id, id: user.id })
+			sessions.push({ channel: "General", uid: user.uid, sessionID, admin: Config.adminUIDs.includes(user.uid), socketID: socket.id, id: user.id, bot: Utils.User.isBot(uid) })
 
 			socket.emit("authResult", {
 				success: true,
@@ -345,7 +345,7 @@ io.on("connect", (socket) => {
 			}
 
 			let sessionID = Utils.Session.makeSessionID()
-			sessions.push({ channel: "General", uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id, id })
+			sessions.push({ channel: "General", uid, sessionID, admin: Config.adminUIDs.includes(uid), socketID: socket.id, id, bot: Utils.User.isBot(uid) })
 
 			socket.emit("authResult", {
 				success: true,
@@ -378,6 +378,7 @@ io.on("connect", (socket) => {
 	})
 
 	socket.on("msg", (data) => {
+		console.log(data)
 		if (!data || !["id", "uid", "username", "tag", "msg"].every((k) => k in data) || [data.id, data.uid, data.username, data.tag, data.msg].some(str => str === "")) return socket.emit("methodResult", {
 			success: false,
 			method: "messageSend",
@@ -417,7 +418,7 @@ io.on("connect", (socket) => {
 			message: "Client cannot send messages while lurking."
 		})
 		if (data.uid === "Server") return;
-		if(serverCache.addons.connectors.rateLimit(serverCache, io, socket.id, session.channel)) return; // stop if session#channel is ratelimited
+		if (serverCache.addons.connectors.rateLimit(serverCache, io, socket.id, session.channel)) return; // stop if session#channel is ratelimited
 		data.msg = Utils.Session.sanitizeInputTags(data.msg)
 		if (data.msg.trim().length > Config.maxCharacterLength) return socket.emit("methodResult", {
 			success: false,
@@ -431,7 +432,7 @@ io.on("connect", (socket) => {
 			type: "noMessageContent",
 			message: `The message the client attempted to send had no body.`
 		})
-		
+
 		if (serverCache.addons.hardCommands.has(`${data.msg.trim().replace("/", "")}`) && data.msg.trim().charAt(0) == "/") return;
 		if (serverCache.addons.chat.locked[session.channel] && !session.admin) return socket.emit("methodResult", {
 			success: false,
@@ -445,7 +446,7 @@ io.on("connect", (socket) => {
 		if (serverCache.addons.chat.chatHistory[session.channel].length > 100 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].shift()
 
 		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].push({ timestamp: Date.now(), username: data.username, channel: session.channel, tag: data.tag, msg: data.msg.replace("\n", "") })
-		io.sockets.in(session.channel).emit('msg', { channel: session.channel, msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
+		io.sockets.in(session.channel).emit('msg', { bot: session.bot, channel: session.channel, msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, id: data.id })
 	})
 
 	socket.on("disconnecting", () => {
@@ -524,7 +525,7 @@ io.on("connect", (socket) => {
 })
 
 ci.on("SIGINT", () => {
-	for(let i = 1; i < sessions.length; i++){
+	for (let i = 1; i < sessions.length; i++) {
 		Utils.Session.addSessionToDatabase(sessions[i])
 	}
 	process.exit(0)
@@ -555,6 +556,22 @@ server.listen(Config.port, () => {
 		console.log("Created Old Sessions table.")
 	}
 
+	let botsColumn = UserDB.prepare("SELECT COUNT(*) AS CNTREC FROM pragma_table_info('users') WHERE name='bot'").get().CNTREC
+	if (botsColumn == 0) {
+		UserDB.prepare("ALTER TABLE users ADD COLUMN bot BIT;").run()
+		setTimeout(() => {
+			UserDB.prepare("UPDATE users SET bot=0;").run()
+		}, 500)
+	}
+
+	let cryptColumn = UserDB.prepare("SELECT COUNT(*) AS CNTREC FROM pragma_table_info('users') WHERE name='crypt'").get().CNTREC
+	if (cryptColumn == 0) {
+		UserDB.prepare("ALTER TABLE users ADD COLUMN crypt TEXT;").run()
+		setTimeout(() => {
+			UserDB.prepare("UPDATE users SET crypt=\"\";").run()
+		}, 500)
+	}
+
 	console.log(`Server online on port ${Config.port}.`)
 })
 
@@ -566,7 +583,7 @@ server.listen(Config.port, () => {
 function createServer(protocol, serverOptions) {
 	return protocol.createServer(serverOptions, (req, res) => {
 		// if(!Config.publicServer || ["0.0.0.0", "localhost", "127.0.0.1"].includes(Config.publicIP)) return res.writeHead(400) // Was thinking maybe pinging should be all servers so I commented this out
-		if (req.url == "/ping") {
+		if (req.url == "/ping" && req.method == "GET") {
 			let toWrite = JSON.stringify({
 				members: Utils.Server.getMemberList(sessions, User).length,
 				maxMembers: Config.maxSlots,
@@ -577,6 +594,11 @@ function createServer(protocol, serverOptions) {
 			})
 			res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "https://termtalk.app" })
 			res.end(toWrite)
+			return
+		}
+		if (Config.enableAPIEndpoints) {
+			if (req.method == "GET") return Utils.API.handleGET(req, res, { Utils, User, io, sessions, cache: serverCache })
+			else if (req.method == "POST") return Utils.API.handlePOST(req, res, { Utils, User, io, sessions, cache: serverCache })
 		}
 	})
 }
