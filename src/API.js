@@ -284,7 +284,7 @@ function handleMessageSend(req, res, Service) {
           res.writeHead(400, { "Content-Type": "application/json" })
           return res.end(toWrite)
         }
-        if (!body.channel) body.channel = paths[1]
+        body.channel = paths[1]
         let id = flake.gen()
         let userID = body.id
         delete body.id
