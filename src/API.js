@@ -109,7 +109,7 @@ class API {
         res.writeHead(401, { "Content-Type": "application/json" })
         return res.end(toWrite)
       }
-      if (paths[0] == "channels") {
+      if (paths[0] == "channels" && paths[2] == "messages") {
         handleMessageSend(req, res, Service)
       } else if (paths[0] == "members") {
         handleMembers(req, res, Service)
@@ -210,19 +210,33 @@ function getMemberList(req, res, Service) {
 
 function handleMessageSend(req, res, Service) {
   let paths = req.url.slice(1).split("/")
-  if (paths[2] == "messages") {
-    if (paths[1] != "General" && !config.channels.includes(paths[1])) {
+  if (paths[1] != "General" && !config.channels.includes(paths[1])) {
+    let toWrite = JSON.stringify({
+      code: 404,
+      message: "Channel not found",
+      method: "messageSend",
+      type: "channelNotFound",
+      success: false
+    })
+    res.writeHead(404, { "Content-Type": "application/json" })
+    return res.end(toWrite)
+  } else {
+    if (req.headers["content-type"] !== "application/json") {
       let toWrite = JSON.stringify({
-        code: 404,
-        message: "Channel not found",
+        code: 400,
+        message: "Expected JSON input.",
+        type: "badInput",
         method: "messageSend",
-        type: "channelNotFound",
         success: false
       })
-      res.writeHead(404, { "Content-Type": "application/json" })
+      res.writeHead(400, { "Content-Type": "application/json" })
       return res.end(toWrite)
-    } else {
-      if (req.headers["content-type"] !== "application/json") {
+    }
+    let body = []
+    req.on("data", (c) => body.push(c)).on("end", () => {
+      try {
+        body = JSON.parse(Buffer.concat(body).toString())
+      } catch (e) {
         let toWrite = JSON.stringify({
           code: 400,
           message: "Expected JSON input.",
@@ -233,76 +247,60 @@ function handleMessageSend(req, res, Service) {
         res.writeHead(400, { "Content-Type": "application/json" })
         return res.end(toWrite)
       }
-      let body = []
-      req.on("data", (c) => body.push(c)).on("end", () => {
-        try {
-          body = JSON.parse(Buffer.concat(body).toString())
-        } catch (e) {
-          let toWrite = JSON.stringify({
-            code: 400,
-            message: "Expected JSON input.",
-            type: "badInput",
-            method: "messageSend",
-            success: false
-          })
-          res.writeHead(400, { "Content-Type": "application/json" })
-          return res.end(toWrite)
-        }
 
-        if (!body || !["id", "uid", "username", "tag", "msg"].every((k) => k in body) || [body.id, body.uid, body.username, body.tag, body.msg].some(str => str === "")) {
-          let toWrite = JSON.stringify({
-            method: "messageSend",
-            type: "insufficientData",
-            message: "Did not receive any or enough data.",
-            code: 400,
-            success: false
-          })
-          res.writeHead(400, { "Content-Type": "application/json" })
-          return res.end(toWrite)
-        }
-
-        if (!body.sessionID || !Service.sessions.find(t => t.sessionID == body.sessionID)) {
-          let toWrite = JSON.stringify({
-            method: "messageSend",
-            type: "invalidSessionID",
-            message: "No valid session ID provided.",
-            code: 401,
-            success: false
-          })
-          res.writeHead(401, { "Content-Type": "application/json" })
-          return res.end(toWrite)
-        }
-
-        if ([body.uid, body.username, body.tag, body.msg].some(str => typeof str != "string")) {
-          let toWrite = JSON.stringify({
-            method: "messageSend",
-            type: "invalidDataTypes",
-            message: "Received incorrect data types.",
-            code: 400,
-            success: false
-          })
-          res.writeHead(400, { "Content-Type": "application/json" })
-          return res.end(toWrite)
-        }
-        body.channel = paths[1]
-        let id = flake.gen()
-        let userID = body.id
-        delete body.id
-        if (!Service.cache.addons.chat.chatHistory[paths[1]]) serverCache.addons.chat.chatHistory[paths[1]] = []
-        if (Service.cache.addons.chat.chatHistory[paths[1]].length > 100 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory[paths[1]].shift()
-        if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[paths[1]].push({ id, timestamp: Date.now(), username: body.username, channel: paths[1], tag: body.tag, bot: true, userID, uid: body.uid, msg: body.msg.replace("\n", "") })
-        Service.io.sockets.in(paths[1]).emit("msg", { id, userID, ...body })
+      if (!body || !["id", "uid", "username", "tag", "msg"].every((k) => k in body) || [body.id, body.uid, body.username, body.tag, body.msg].some(str => str === "")) {
         let toWrite = JSON.stringify({
-          code: 200,
-          message: { id, userID, ...body },
-          type: "success",
           method: "messageSend",
-          success: true
+          type: "insufficientData",
+          message: "Did not receive any or enough data.",
+          code: 400,
+          success: false
         })
-        res.writeHead(200, { "Content-Type": "application/json" })
+        res.writeHead(400, { "Content-Type": "application/json" })
         return res.end(toWrite)
+      }
+
+      if (!body.sessionID || !Service.sessions.find(t => t.sessionID == body.sessionID)) {
+        let toWrite = JSON.stringify({
+          method: "messageSend",
+          type: "invalidSessionID",
+          message: "No valid session ID provided.",
+          code: 401,
+          success: false
+        })
+        res.writeHead(401, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
+
+      if ([body.uid, body.username, body.tag, body.msg].some(str => typeof str != "string")) {
+        let toWrite = JSON.stringify({
+          method: "messageSend",
+          type: "invalidDataTypes",
+          message: "Received incorrect data types.",
+          code: 400,
+          success: false
+        })
+        res.writeHead(400, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
+      body.channel = paths[1]
+      let id = flake.gen()
+      let userID = body.id
+      delete body.id
+      if (!Service.cache.addons.chat.chatHistory[paths[1]]) serverCache.addons.chat.chatHistory[paths[1]] = []
+      if (Service.cache.addons.chat.chatHistory[paths[1]].length > 100 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory[paths[1]].shift()
+      if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[paths[1]].push({ id, timestamp: Date.now(), username: body.username, channel: paths[1], tag: body.tag, bot: true, userID, uid: body.uid, msg: body.msg.replace("\n", "") })
+      Service.io.sockets.in(paths[1]).emit("msg", { id, userID, ...body })
+      let toWrite = JSON.stringify({
+        code: 200,
+        message: { id, userID, ...body },
+        type: "success",
+        method: "messageSend",
+        success: true
       })
-    }
+      res.writeHead(200, { "Content-Type": "application/json" })
+      return res.end(toWrite)
+    })
   }
 }
 
