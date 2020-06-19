@@ -569,7 +569,7 @@ io.on("connect", (socket) => {
 		if (serverCache.addons.chat.chatHistory[session.channel].length > 100 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].shift()
 
 		let id = flake.gen()
-		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].push({ id, timestamp: Date.now(), username: data.username, channel: session.channel, tag: data.tag, msg: data.msg.replace("\n", "") })
+		if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[session.channel].push({ id, timestamp: Date.now(), username: data.username, channel: session.channel, tag: data.tag, bot: session.bot, userID: data.id, uid: data.uid, msg: data.msg.replace("\n", "") })
 		io.sockets.in(session.channel).emit('msg', { id, bot: session.bot, channel: session.channel, msg: data.msg, username: data.username, tag: data.tag, uid: data.uid, userID: data.id })
 		let bots = sessions.filter(t => t.bot)
 		for (let i = 0; i < bots.length; i++) {

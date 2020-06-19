@@ -290,7 +290,7 @@ function handleMessageSend(req, res, Service) {
         delete body.id
         if (!Service.cache.addons.chat.chatHistory[paths[1]]) serverCache.addons.chat.chatHistory[paths[1]] = []
         if (Service.cache.addons.chat.chatHistory[paths[1]].length > 100 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory[paths[1]].shift()
-        if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[paths[1]].push({ id, timestamp: Date.now(), username: body.username, channel: paths[1], tag: body.tag, msg: body.msg.replace("\n", "") })
+        if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[paths[1]].push({ id, timestamp: Date.now(), username: body.username, channel: paths[1], tag: body.tag, bot: true, userID, uid: body.uid, msg: body.msg.replace("\n", "") })
         Service.io.sockets.in(paths[1]).emit("msg", { id, userID, ...body })
         let toWrite = JSON.stringify({
           code: 200,
