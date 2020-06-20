@@ -17,3 +17,9 @@ When you make a public server, the server list will return a `key` on successful
 # SSL
 
 Version 0.3.1 added secure servers as a possibility using SSL. Securing your server will give your server a "Secure" text after the member count to show that your server uses SSL. All you have to do is change `secure` in config to `true` and edit the 3 file locations beneath it. Letsencrypt is a good way to obtain a free SSL certificate if you want to secure your server for free. Securing your server makes use of SSL's (usually) 256 bit encryption algorithm end to end to ensure, even if there are snoopers on the connection, they'd have to go through a rigorous decrypting algorithm that [usually takes millions of years](https://www.digicert.com/blog/cost-crack-256-bit-ssl-encryption/).
+
+# The config.
+
+Most of the config is pretty self-explanatory, but there are some advanced options:
+
+`enableAPIEndpoints` - Enables the api for bot creation.
