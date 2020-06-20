@@ -284,6 +284,7 @@ function handleMessageSend(req, res, Service) {
         return res.end(toWrite)
       }
       body.channel = paths[1]
+      body.bot = true
       let id = flake.gen()
       let userID = body.id
       delete body.id
@@ -462,6 +463,7 @@ function handleMembers(req, res, Service) {
       }
       let id = flake.gen()
       let userID = body.id
+      body.bot = true
       delete body.id
       Service.io.sockets.connected[session.socketID].emit("msg", { id, userID, channel: "DM", ...body })
       let toWrite = JSON.stringify({
