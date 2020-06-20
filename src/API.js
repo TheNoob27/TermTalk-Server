@@ -284,12 +284,13 @@ function handleMessageSend(req, res, Service) {
         return res.end(toWrite)
       }
       body.channel = paths[1]
+      body.bot = true
       let id = flake.gen()
       let userID = body.id
       delete body.id
-      if (!Service.cache.addons.chat.chatHistory[paths[1]]) serverCache.addons.chat.chatHistory[paths[1]] = []
-      if (Service.cache.addons.chat.chatHistory[paths[1]].length > 100 && Config.saveLoadHistory) serverCache.addons.chat.chatHistory[paths[1]].shift()
-      if (Config.saveLoadHistory) serverCache.addons.chat.chatHistory[paths[1]].push({ id, timestamp: Date.now(), username: body.username, channel: paths[1], tag: body.tag, bot: true, userID, uid: body.uid, msg: body.msg.replace("\n", "") })
+      if (!Service.cache.addons.chat.chatHistory[paths[1]]) Service.cache.addons.chat.chatHistory[paths[1]] = []
+      if (Service.cache.addons.chat.chatHistory[paths[1]].length > 100 && config.saveLoadHistory) Service.cache.addons.chat.chatHistory[paths[1]].shift()
+      if (config.saveLoadHistory) Service.cache.addons.chat.chatHistory[paths[1]].push({ id, timestamp: Date.now(), username: body.username, channel: paths[1], tag: body.tag, bot: true, userID, uid: body.uid, msg: body.msg.replace("\n", "") })
       Service.io.sockets.in(paths[1]).emit("msg", { id, userID, ...body })
       let toWrite = JSON.stringify({
         code: 200,
@@ -462,6 +463,7 @@ function handleMembers(req, res, Service) {
       }
       let id = flake.gen()
       let userID = body.id
+      body.bot = true
       delete body.id
       Service.io.sockets.connected[session.socketID].emit("msg", { id, userID, channel: "DM", ...body })
       let toWrite = JSON.stringify({
