@@ -51,7 +51,7 @@ class UserHandle {
 			if (err) return callback(err)
 
 			const id = flake.gen()
-			this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash, bot, crypt, owner) VALUES (?, ?, ?, ?, ?, ?, ?);").run(id, uid, username, tag, hash, 0, "", "")
+			this.Database.prepare("INSERT INTO users (id, uid, username, tag, passwordHash, bot, crypt, owner) VALUES (?, ?, ?, ?, ?, ?, ?, ?);").run(id, uid, username, tag, hash, 0, "", "")
 			return callback(null, id)
 		})
 	}
