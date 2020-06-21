@@ -29,22 +29,26 @@ class Server {
 		return io.sockets.connected[socketID].emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
 	}
 
-	static broadcast(msg, io, channel) {
-		if(!channel) return io.emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
+	static broadcast(msg, io, channel, sessions) {
+		if (!channel) return io.emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
+		let bots = sessions.filter(t => t.bot)
+		for (let i = 0; i < bots.length; i++) {
+			io.sockets.connected[bots[i].socketID].emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
+		}
 		return io.sockets.in(channel).emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
 	}
 
 	static getMemberList(sessions, UserHandle, channel) {
 		let clonedSessions = JSON.parse(JSON.stringify(sessions))
-		if(channel) clonedSessions = clonedSessions.filter(t => t.channel == channel || t.bot)
+		if (channel) clonedSessions = clonedSessions.filter(t => t.channel == channel || t.bot)
 		let length = clonedSessions.length
-		if(Config.allowLurking) clonedSessions = clonedSessions.filter(t => !t.lurking)
+		if (Config.allowLurking) clonedSessions = clonedSessions.filter(t => !t.lurking)
 		let lurkers = length - clonedSessions.length
 		let list = clonedSessions.map(t => UserHandle.getUserByUID(t.uid, (err, user) => {
 			if (err) return ""
-			return {username: user.username, tag: user.tag, uid: user.uid, admin: t.admin, bot: user.bot, id: user.id}
+			return { username: user.username, tag: user.tag, uid: user.uid, admin: t.admin, bot: user.bot, id: user.id }
 		})).filter(t => t != "")
-		if(lurkers > 0) list.push({lurkers: list.length > 0 ? `+ ${lurkers} lurker(s)` : `${lurkers} lurker(s)`})
+		if (lurkers > 0) list.push({ lurkers: list.length > 0 ? `+ ${lurkers} lurker(s)` : `${lurkers} lurker(s)` })
 		return list
 	}
 
