@@ -29,7 +29,7 @@ class Server {
 		return io.sockets.connected[socketID].emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
 	}
 
-	static broadcast(msg, io, channel) {
+	static broadcast(msg, io, channel, sessions) {
 		if (!channel) return io.emit('msg', { username: "Server", tag: "0000", msg, uid: "Server", server: true })
 		let bots = sessions.filter(t => t.bot)
 		for (let i = 0; i < bots.length; i++) {

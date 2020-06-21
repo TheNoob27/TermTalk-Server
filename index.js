@@ -219,7 +219,7 @@ io.on("connect", (socket) => {
 						console.log(err)
 					}
 				}
-				Utils.Server.broadcast(`${user.bot ? "[BOT] " : ""}${user.username}#${user.tag} has reconnected.`, io, "General")
+				Utils.Server.broadcast(`${user.bot ? "[BOT] " : ""}${user.username}#${user.tag} has reconnected.`, io, "General", sessions)
 				if (!sessions.find(t => t.sessionID == data.sessionID)) sessions.push({ channel: "General", uid: data.uid, sessionID: data.sessionID, admin: Config.adminUIDs.includes(data.uid), socketID: socket.id, bot: User.isBot(data.uid), id: data.id })
 				io.sockets.in("General").emit("method", {
 					method: "userConnect",
@@ -320,7 +320,7 @@ io.on("connect", (socket) => {
 
 				socket.join("General")
 				if (Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id, "General")
-				Utils.Server.broadcast(`${user.bot ? "[BOT] " : ""}${user.username}#${user.tag} has connected.`, io, "General")
+				Utils.Server.broadcast(`${user.bot ? "[BOT] " : ""}${user.username}#${user.tag} has connected.`, io, "General", sessions)
 				io.sockets.in("General").emit("method", {
 					method: "userConnect",
 					user: `${user.username}#${user.tag}`,
@@ -393,7 +393,7 @@ io.on("connect", (socket) => {
 					user: `${bot.username}#${bot.tag}`,
 					type: "serverRequest"
 				})
-				Utils.Server.broadcast(`[BOT] ${bot.username}#${bot.tag} has connected.`, io)
+				Utils.Server.broadcast(`[BOT] ${bot.username}#${bot.tag} has connected.`, io, sessions)
 				let bots = sessions.filter(t => t.bot)
 				for (let i = 0; i < bots.length; i++) {
 					io.sockets.connected[bots[i].socketID].emit('memberConnect', {
@@ -467,7 +467,7 @@ io.on("connect", (socket) => {
 			})
 			socket.join("General")
 			Utils.Server.broadcast(`${username}#${tag} has connected.`, io, "General")
-			if (Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id, "General")
+			if (Config.saveLoadHistory) serverCache.addons.connectors.sendHistory(serverCache, io, socket.id, "General", sessions)
 			io.sockets.in("General").emit("method", {
 				method: "userConnect",
 				type: "serverRequest",
@@ -597,7 +597,7 @@ io.on("connect", (socket) => {
 					user: `${d.username}#${d.tag}`
 				})
 
-				Utils.Server.broadcast(`${session.bot ? "[BOT] " : ""}${d.username}#${d.tag} has disconnected.`, io)
+				Utils.Server.broadcast(`${session.bot ? "[BOT] " : ""}${d.username}#${d.tag} has disconnected.`, io, sessions)
 				let bots = sessions.filter(t => t.bot)
 				for (let i = 0; i < bots.length; i++) {
 					io.sockets.connected[bots[i].socketID].emit('memberDisconnect', {
