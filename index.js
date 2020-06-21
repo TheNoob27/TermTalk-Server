@@ -737,6 +737,7 @@ server.listen(Config.port, () => {
 
 function createServer(protocol, serverOptions) {
 	return protocol.createServer(serverOptions, (req, res) => {
+		req.url = decodeURI(req.url)
 		// if(!Config.publicServer || ["0.0.0.0", "localhost", "127.0.0.1"].includes(Config.publicIP)) return res.writeHead(400) // Was thinking maybe pinging should be all servers so I commented this out
 		if (req.url == "/ping" && req.method == "GET") {
 			let toWrite = JSON.stringify({
