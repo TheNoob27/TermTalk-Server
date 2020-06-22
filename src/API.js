@@ -57,6 +57,16 @@ class API {
         getChannelList(req, res, Service)
       } else if (paths[0].startsWith("members")) {
         getMemberList(req, res, Service)
+      } else {
+        let toWrite = JSON.stringify({
+          method: "GET",
+          type: "unknownRequest",
+          message: "Requested to an endpoint that does not exist.",
+          code: 404,
+          success: false
+        })
+        res.writeHead(404, { "Content-Type": "application/json" })
+        return res.end(toWrite)
       }
     })
   }
@@ -113,8 +123,75 @@ class API {
         handleMessageSend(req, res, Service)
       } else if (paths[0] == "members") {
         handleMembers(req, res, Service)
+      } else {
+        let toWrite = JSON.stringify({
+          method: "GET",
+          type: "unknownRequest",
+          message: "Requested to an endpoint that does not exist.",
+          code: 404,
+          success: false
+        })
+        res.writeHead(404, { "Content-Type": "application/json" })
+        return res.end(toWrite)
       }
     })
+  }
+  
+  static handleDELETE(req, res, Service) {
+    let path = req.url.slice(1).split("/")
+    if (path[0] === "members") {
+      if (!req.headers.authorization || !req.headers.authorization.startsWith("Bot ")) {
+        let toWrite = JSON.stringify({
+          method: "botValidate",
+          type: "invalidToken",
+          message: "No valid token provided.",
+          code: 401,
+          success: false
+        })
+        res.writeHead(401, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
+      
+      Service.User.validateBot(req.headers.authorization.slice(4), (err, matched, bot) => {
+        if (bot.passwordHash !== req.headers.authorization.slice(4)) {
+          let toWrite = JSON.stringify({
+            method: "botValidate",
+            type: "invalidToken",
+            message: "The token provided was invalid.",
+            code: 401,
+            success: false
+          })
+          res.writeHead(401, { "Content-Type": "application/json" })
+          return res.end(toWrite)
+        }
+        
+        if (err) {
+          let toWrite = JSON.stringify({
+            method: "botValidate",
+            type: err.type,
+            message: err.message || "Server error.",
+            code: err.code || 500,
+            success: false
+          })
+          res.writeHead(err.code || 500, { "Content-Type": "application/json" })
+          return res.end(toWrite)
+        }
+        
+        if (!matched) {
+          let toWrite = JSON.stringify({
+            method: "botValidate",
+            type: "invalidToken",
+            message: "The token provided was not valid.",
+            code: 401,
+            success: false
+          })
+          res.writeHead(401, { "Content-Type": "application/json" })
+          return res.end(toWrite)
+        }
+        
+        
+      })
+    }
   }
 }
 
@@ -475,6 +552,60 @@ function handleMembers(req, res, Service) {
       })
       res.writeHead(200, { "Content-Type": "application/json" })
       return res.end(toWrite)
+    })
+  } else if (req.method === "DELETE") {
+    if (req.headers["content-type"] !== "application/json") {
+      let toWrite = JSON.stringify({
+        code: 400,
+        message: "Expected JSON input.",
+        type: "badInput",
+        method: "messageSend",
+        success: false
+      })
+      res.writeHead(400, { "Content-Type": "application/json" })
+      return res.end(toWrite)
+    }
+    let body = []
+    req.on("data", (c) => body.push(c))
+    .on("end", () => {
+      try {
+        body = JSON.parse(Buffer.concat(body).toString())
+      } catch (e) {
+        let toWrite = JSON.stringify({
+          code: 400,
+          message: "Expected JSON input.",
+          type: "badInput",
+          method: "messageSend",
+          success: false
+        })
+        res.writeHead(400, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
+        
+      if (!body.sessionID || !Service.sessions.find(t => t.sessionID == body.sessionID)) {
+        let toWrite = JSON.stringify({
+          method: "memberKick",
+          type: "invalidSessionID",
+          message: "No valid session ID provided.",
+          code: 401,
+          success: false
+        })
+        res.writeHead(401, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
+        
+      let session = Service.sessions.find(t => t.id == path[1])
+      if (!session) {
+        let toWrite = JSON.stringify({
+          method: "memberKick",
+          type: "userNotFound",
+          message: "User not found, they may not be connected.",
+          code: 404,
+          success: false
+        })
+        res.writeHead(404, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
     })
   }
 }
