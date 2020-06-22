@@ -553,7 +553,7 @@ function handleMembers(req, res, Service) {
       res.writeHead(200, { "Content-Type": "application/json" })
       return res.end(toWrite)
     })
-  } else if (req.method === "DELETE") {
+  } else if (req.method === "DELETE") { // kicking members
     if (req.headers["content-type"] !== "application/json") {
       let toWrite = JSON.stringify({
         code: 400,
@@ -581,8 +581,9 @@ function handleMembers(req, res, Service) {
         res.writeHead(400, { "Content-Type": "application/json" })
         return res.end(toWrite)
       }
-        
-      if (!body.sessionID || !Service.sessions.find(t => t.sessionID == body.sessionID)) {
+      
+      let bot = Service.sessions.find(t => t.sessionID == body.sessionID)
+      if (!body.sessionID || !bot) {
         let toWrite = JSON.stringify({
           method: "memberKick",
           type: "invalidSessionID",
@@ -593,9 +594,21 @@ function handleMembers(req, res, Service) {
         res.writeHead(401, { "Content-Type": "application/json" })
         return res.end(toWrite)
       }
+      
+      if (!bot.admin) {
+        let toWrite = JSON.stringify({
+          method: "memberKick",
+          type: "missingPermission",
+          message: "You do not have permission to kick members.",
+          code: 403,
+          success: false
+        })
+        res.writeHead(403, { "Content-Type": "application/json" })
+        return res.end(toWrite)
+      }
         
-      let session = Service.sessions.find(t => t.id == path[1])
-      if (!session) {
+      let user = Service.sessions.find(t => t.id === paths[1])
+      if (!user) {
         let toWrite = JSON.stringify({
           method: "memberKick",
           type: "userNotFound",
@@ -606,6 +619,17 @@ function handleMembers(req, res, Service) {
         res.writeHead(404, { "Content-Type": "application/json" })
         return res.end(toWrite)
       }
+      
+      Service.io.sockets.connected[session.socketID].emit("msg", { id, userID, channel: "DM", ...body })
+      
+      let toWrite = JSON.stringify({
+        code: 200,
+        type: "success",
+        method: "memberKick",
+        success: true
+      })
+      res.writeHead(200, { "Content-Type": "application/json" })
+      return res.end(toWrite)
     })
   }
 }
