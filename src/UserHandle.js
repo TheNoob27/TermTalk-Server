@@ -99,6 +99,17 @@ class UserHandle {
 		})
 	}
 
+	updateSQLEntry(uid, valuesToUpdate, newValues){
+		if(valuesToUpdate.length !== newValues.length) return false
+		this.Database.prepare(`UPDATE users SET ${valuesToUpdate.join(" = ?, ")} = ? WHERE uid=?;`).run(...newValues, uid)
+		return true
+	}
+
+	getBots(uid, callback) {
+		const bots = this.Database.prepare("SELECT * FROM users WHERE owner=?;").all(uid)
+		callback(bots)
+	}
+
 	login(uid, password, callback) {
 		const user = this.Database.prepare("SELECT * FROM users WHERE uid=?;").get(uid)
 		if (!user) return callback({
